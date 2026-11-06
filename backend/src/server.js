@@ -12,6 +12,7 @@ import { createHistoryRouter } from "./routes/history.js";
 import { createConfigRouter } from "./routes/config.js";
 import { initTelegramBot } from "./telegram.js";
 import { evaluateOfflineTransition } from "./alarms.js";
+import { initMqttIngest } from "./mqtt.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const WEB_DIR = join(__dirname, "..", "..", "web");
@@ -21,6 +22,8 @@ const DEVICE_API_KEY = process.env.DEVICE_API_KEY || "";
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 const OFFLINE_MINUTES = Number(process.env.DEVICE_OFFLINE_MINUTES) || 5;
+const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL || "";
+const MQTT_TOPIC = process.env.MQTT_TOPIC || "";
 
 if (!DEVICE_API_KEY) {
   console.warn(
@@ -50,6 +53,12 @@ initTelegramBot({
   token: TELEGRAM_BOT_TOKEN,
   getLatestReadingFn: () => getLatestReading(DEFAULT_DEVICE_ID),
   isDeviceOnlineFn: isOnline,
+});
+
+initMqttIngest({
+  brokerUrl: MQTT_BROKER_URL,
+  topic: MQTT_TOPIC,
+  deviceApiKey: DEVICE_API_KEY,
 });
 
 // Cek berkala apakah perangkat berhenti mengirim data (FR-02).

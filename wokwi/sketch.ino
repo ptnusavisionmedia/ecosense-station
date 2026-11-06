@@ -1,19 +1,20 @@
 /*
-  EcoSense Station — Wokwi simulation build (WiFi + HTTP POST)
+  EcoSense Station — Wokwi simulation build (WiFi + MQTT)
 
   Versi untuk SIMULASI di wokwi.com saja. Berbeda dari
   ../firmware/esp32-wifi/esp32-wifi.ino (yang untuk perangkat ESP32 fisik):
     - WIFI_SSID diset ke "Wokwi-GUEST" / password kosong — ini jaringan
       WiFi virtual bawaan Wokwi yang punya akses internet sungguhan dari
       simulator (lihat https://docs.wokwi.com/guides/esp32-wifi).
-    - INGEST_URL diarahkan ke https://httpbin.org/post (endpoint publik yang
-      sekadar meng-echo balik request yang diterima) — dipakai untuk
-      MEMVALIDASI alur WiFi connect + HTTP POST JSON-nya, BUKAN backend
-      sungguhan. Backend asli di ../backend berjalan di localhost komputer
-      Anda sendiri, yang TIDAK bisa dijangkau dari simulator Wokwi (jalan di
-      cloud, bukan di komputer Anda) — perlu tunnel (ngrok dsb.) atau
-      backend yang sudah online publik kalau mau tes ingest sungguhan dari
-      Wokwi.
+    - Data dikirim lewat MQTT (bukan HTTP POST) ke broker publik
+      broker.hivemq.com:1883 (plain TCP, tanpa TLS — Wokwi TIDAK bisa
+      membuka koneksi HTTPS/TLS sama sekali, lihat wokwi/README.md).
+      Backend ../backend berlangganan topic yang sama lewat
+      backend/src/mqtt.js, jadi TIDAK perlu tunnel (ngrok/localtunnel) sama
+      sekali — baik simulator maupun backend cuma membuat koneksi KELUAR ke
+      broker. MQTT_TOPIC di bawah pakai namespace demo bersama; untuk
+      pemakaian sungguhan ganti ke topic unik (lihat MQTT_TOPIC di
+      backend/.env) supaya tidak bentrok dengan pengguna lain broker publik.
 
   Sensor pengganti (sama seperti ../../ecosense-station-wokwi di repo
   Aplikasi-Pendeteksi-Buronan): HC-SR04 (pengganti JSN-SR04T), dua
@@ -22,25 +23,32 @@
   punya part transistor).
 
   Library Arduino: DHT sensor library (Adafruit), Adafruit Unified Sensor,
-  LiquidCrystal_I2C, ArduinoJson (Benoit Blanchon).
+  LiquidCrystal_I2C, ArduinoJson (Benoit Blanchon), PubSubClient (Nick O'Leary).
 */
 
 #include <WiFi.h>
-#include <HTTPClient.h>
+#include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <DHT.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-// ---------- WiFi & server (khusus simulasi Wokwi) ----------
+// ---------- WiFi & MQTT (khusus simulasi Wokwi) ----------
 const char* WIFI_SSID = "Wokwi-GUEST";
 const char* WIFI_PASSWORD = "";
-const char* INGEST_URL = "http://httpbin.org/post"; // endpoint uji publik, bukan backend asli
-const char* DEVICE_API_KEY = "wokwi-sim-key";
+const char* MQTT_BROKER = "broker.hivemq.com";
+const int   MQTT_PORT = 1883;
+const char* MQTT_TOPIC = "ecosense-station-demo/ingest"; // samakan dengan MQTT_TOPIC di backend/.env
+const char* DEVICE_API_KEY = "wokwi-sim-key"; // dikirim di field "apiKey" tiap payload (MQTT tidak punya header)
 const char* DEVICE_ID = "ecosense-01-sim";
 
 const unsigned long WIFI_RECONNECT_INTERVAL_MS = 15000;
+const unsigned long MQTT_RECONNECT_INTERVAL_MS = 5000;
 const unsigned long SEND_INTERVAL_MS = 5000;
+
+WiFiClient espClient;
+PubSubClient mqttClient(espClient);
+unsigned long lastMqttAttempt = 0;
 
 // ---------- Pin map (sama dengan diagram.json di folder ini) ----------
 #define PIN_TRIG      5
@@ -236,9 +244,9 @@ void renderLcdPage(float waterHeightCm, float ph, float turbidityNtu) {
       break;
     case 4:
       lcd.setCursor(0, 0);
-      lcd.print("WiFi:");
+      lcd.print("MQTT:");
       lcd.setCursor(0, 1);
-      lcd.print(WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString() : "disconnected");
+      lcd.print(mqttClient.connected() ? "connected" : "disconnected");
       break;
   }
 }
@@ -256,6 +264,26 @@ void ensureWifiConnected() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 }
 
+void ensureMqttConnected() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  if (mqttClient.connected()) return;
+
+  unsigned long now = millis();
+  if (now - lastMqttAttempt < MQTT_RECONNECT_INTERVAL_MS) return;
+  lastMqttAttempt = now;
+
+  String clientId = String("ecosense-wokwi-") + String((uint32_t)esp_random(), HEX);
+  Serial.print("MQTT: mencoba konek sebagai ");
+  Serial.println(clientId);
+
+  if (mqttClient.connect(clientId.c_str())) {
+    Serial.println("MQTT: terhubung ke broker");
+  } else {
+    Serial.print("MQTT: gagal konek, state=");
+    Serial.println(mqttClient.state());
+  }
+}
+
 void setNumberOrNull(JsonDocument &doc, const char* key, float value) {
   if (isnan(value)) {
     doc[key] = nullptr;
@@ -265,10 +293,11 @@ void setNumberOrNull(JsonDocument &doc, const char* key, float value) {
 }
 
 void sendReadingToServer(float distanceCm, float waterHeightCm, float ph, float turbidityNtu) {
-  if (WiFi.status() != WL_CONNECTED) return;
+  if (!mqttClient.connected()) return;
 
   JsonDocument doc;
   doc["deviceId"] = DEVICE_ID;
+  doc["apiKey"] = DEVICE_API_KEY;
   setNumberOrNull(doc, "distanceCm", distanceCm);
   setNumberOrNull(doc, "waterHeightCm", waterHeightCm);
   setNumberOrNull(doc, "ph", ph);
@@ -284,26 +313,14 @@ void sendReadingToServer(float distanceCm, float waterHeightCm, float ph, float 
   String payload;
   serializeJson(doc, payload);
 
-  HTTPClient http;
-  http.setTimeout(4000);
-  http.begin(INGEST_URL);
-  http.addHeader("Content-Type", "application/json");
-  http.addHeader("x-api-key", DEVICE_API_KEY);
-
-  Serial.print("HTTP POST -> ");
-  Serial.println(INGEST_URL);
+  Serial.print("MQTT PUBLISH -> ");
+  Serial.println(MQTT_TOPIC);
   Serial.print("Payload: ");
   Serial.println(payload);
 
-  int statusCode = http.POST(payload);
-  if (statusCode <= 0) {
-    Serial.print("Kirim ke server gagal, error: ");
-    Serial.println(http.errorToString(statusCode));
-  } else {
-    Serial.print("HTTP status: ");
-    Serial.println(statusCode);
-  }
-  http.end();
+  bool ok = mqttClient.publish(MQTT_TOPIC, payload.c_str());
+  Serial.print("MQTT publish result: ");
+  Serial.println(ok ? "OK" : "GAGAL");
 }
 
 void setup() {
@@ -335,13 +352,18 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-  Serial.println("EcoSense Station - Wokwi WiFi sim ready");
+  mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
+  mqttClient.setBufferSize(512);
+
+  Serial.println("EcoSense Station - Wokwi WiFi+MQTT sim ready");
 }
 
 void loop() {
   unsigned long now = millis();
 
   ensureWifiConnected();
+  ensureMqttConnected();
+  mqttClient.loop();
 
   float distanceCm = readUltrasonicDistanceCm();
   float waterHeightCm = computeWaterHeightCm(distanceCm);
@@ -381,7 +403,9 @@ void loop() {
   Serial.print(" water_cm=");
   Serial.print(isnan(waterHeightCm) ? -1 : waterHeightCm);
   Serial.print(" wifi=");
-  Serial.println(WiFi.status() == WL_CONNECTED ? "up" : "down");
+  Serial.print(WiFi.status() == WL_CONNECTED ? "up" : "down");
+  Serial.print(" mqtt=");
+  Serial.println(mqttClient.connected() ? "up" : "down");
 
   delay(500);
 }

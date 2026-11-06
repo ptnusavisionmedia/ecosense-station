@@ -12,63 +12,74 @@ sesungguhnya.
 2. Ganti isi `diagram.json` dan `sketch.ino` project Wokwi dengan file di
    folder ini.
 3. Klik tombol **Start the simulation** (▶). Build pertama kali akan gagal
-   dengan dialog "Build failed!" karena `ArduinoJson.h` belum terpasang —
-   klik tombol **"Install ArduinoJson Library"** di dialog itu (tidak perlu
-   sign in ke akun Wokwi untuk jalur ini). Ulangi hal yang sama untuk
-   `DHT.h` dan `LiquidCrystal_I2C.h` jika muncul (atau install ketiganya
-   sekaligus lewat panel **Library Manager**, tombol `+` → cari nama
-   library di `libraries.txt`).
+   dengan dialog "Build failed!" karena library belum terpasang — untuk
+   `ArduinoJson.h`, `DHT.h`, `LiquidCrystal_I2C.h` klik tombol **"Install
+   ... Library"** langsung di dialog itu (tidak perlu sign in ke akun
+   Wokwi). `PubSubClient.h` tidak punya tombol install langsung di dialog
+   — buka panel **Library Manager** (tab di atas editor), klik `+`, cari
+   "PubSubClient", lalu klik hasil yang namanya persis "PubSubClient"
+   (karya Nick O'Leary). Bisa juga install semuanya sekaligus lewat
+   Library Manager, cari tiap nama di `libraries.txt`.
 4. Jalankan ulang simulasi. ESP32 akan konek ke jaringan WiFi virtual
    bawaan Wokwi (`Wokwi-GUEST`, tanpa password) yang punya akses internet
    sungguhan dari dalam simulator.
 
-## Kenapa default-nya httpbin.org, bukan backend asli
+## Kenapa pakai MQTT, bukan HTTP POST ke backend langsung
 
-Agar project ini bisa langsung dicoba siapa pun tanpa setup tambahan,
-`INGEST_URL` default di sketch diarahkan ke `http://httpbin.org/post`
-(endpoint publik yang sekadar meng-*echo* balik request yang diterima),
-**bukan** `../backend` yang sesungguhnya. Backend asli berjalan di
-`localhost` komputer Anda sendiri, sementara simulator Wokwi jalan di
-cloud — keduanya tidak saling terjangkau secara langsung kecuali backend
-diekspos lewat tunnel. Ini **sudah dicoba dan berhasil** — lihat bagian
-"Ingest ke backend asli (sudah diverifikasi)" di bawah.
-
-### Ingest ke backend asli (sudah diverifikasi)
-
-Untuk menguji ingest sungguhan ke `../backend`, backend perlu diekspos ke
-internet lewat tunnel. Dua catatan penting dari hasil uji coba:
+Sketch ini mengirim data lewat **MQTT** ke broker publik
+`broker.hivemq.com:1883` (plain TCP, bukan TLS), bukan HTTP POST langsung
+ke `../backend`. Backend berlangganan topic yang sama lewat
+`backend/src/mqtt.js`. Alasannya:
 
 1. **Wokwi tidak bisa membuka koneksi HTTPS/TLS sama sekali** dari dalam
    simulator (dicoba ke `https://httpbin.org` pun gagal dengan error
-   `connection refused`, bukan masalah spesifik ngrok). Jadi tunnel yang
-   dipakai **wajib mengizinkan akses HTTP polos** tanpa redirect paksa ke
-   HTTPS.
-   - `ngrok http` di akun gratis **tidak bisa dipakai** — domain
-     `*.ngrok-free.dev` selalu redirect `307` ke HTTPS.
-   - `ngrok tcp` (raw TCP, tanpa TLS) bisa dipakai, tapi akun gratis
-     ngrok sekarang mewajibkan verifikasi kartu kredit untuk fitur ini.
-   - **[localtunnel](https://github.com/localtunnel/localtunnel)** (npm,
-     tanpa akun) terbukti bisa: `http://<subdomain>.loca.lt/...` bisa
-     diakses lewat HTTP polos tanpa redirect. Jalankan dengan
-     `npx localtunnel --port 3000` (atau install lokal lalu
-     `node node_modules/localtunnel/bin/lt.js --port 3000` supaya lebih
-     stabil daripada lewat `npx`).
-2. **Naikkan timeout HTTP di sketch** (`http.setTimeout(...)`) dari 4000ms
-   ke sekitar 15000ms — round-trip lewat tunnel + jaringan simulasi Wokwi
-   lebih lambat daripada akses langsung, jadi 4 detik kerap menghasilkan
-   `HTTP status: 408` meski request sebenarnya sampai.
+   `connection refused`). Backend asli berjalan di `localhost` komputer
+   Anda sendiri, sementara simulator Wokwi jalan di cloud — supaya
+   terjangkau lewat HTTP POST biasa, backend harus diekspos lewat tunnel
+   (ngrok/localtunnel).
+2. **Tunnel gratis terbukti tidak stabil** untuk pemakaian ini: `ngrok
+   http` di akun gratis selalu redirect `307` ke HTTPS (tidak bisa
+   dipakai sama sekali karena Wokwi butuh HTTP polos); `ngrok tcp` butuh
+   verifikasi kartu kredit; **localtunnel** awalnya berhasil (`HTTP
+   status: 201`, data masuk ke database, diverifikasi lewat query
+   langsung), tapi pada percobaan-percobaan berikutnya proses
+   localtunnel-nya sendiri sering mati tanpa alasan jelas, dan bahkan
+   saat prosesnya hidup, request dari Wokwi berulang kali mendapat
+   `HTTP status: 408`/`502`/`503` (dikonfirmasi juga lewat `curl` langsung
+   ke URL tunnel dari komputer yang sama, bukan cuma dari simulator
+   Wokwi) — jadi bukan masalah di kode sketch atau backend.
+3. **MQTT menghindari masalah ini sepenuhnya**: baik simulator Wokwi
+   maupun backend sama-sama cuma membuat koneksi **keluar** ke broker
+   publik (port 1883, plain TCP — diizinkan Wokwi karena bukan TLS).
+   Tidak ada yang perlu menerima koneksi masuk, jadi tidak perlu tunnel
+   sama sekali.
 
-Dengan dua penyesuaian itu, hasilnya **berhasil end-to-end**:
-`HTTP status: 201` di Serial Monitor Wokwi, dan baris data baru
-(`deviceId: "ecosense-01-sim"`) benar-benar masuk ke database SQLite
-backend asli (diverifikasi langsung lewat query ke `backend/data/ecosense.db`,
-bukan cuma asumsi dari status code).
+### Ingest ke backend asli lewat MQTT (sudah diverifikasi)
 
-File `sketch.ino` yang di-commit ke repo ini **tetap** memakai
-`http://httpbin.org/post` sebagai default (bukan URL tunnel, karena URL
-tunnel gratis bersifat sementara dan berubah tiap kali dijalankan ulang).
-Untuk reproduksi tes ingest-ke-backend-asli, ganti `INGEST_URL` dan
-`http.setTimeout(...)` sesuai poin di atas sebelum menjalankan simulasi.
+Hasilnya **berhasil end-to-end dan stabil** — Serial Monitor Wokwi
+menunjukkan `MQTT publish result: OK` tiap 5 detik, dan tiap pesan
+benar-benar masuk ke database SQLite backend asli (dikonfirmasi lewat log
+`[mqtt] Reading tersimpan (id=..., deviceId=..., ts=...)` di backend, id
+bertambah terus selama simulasi berjalan).
+
+Cara menjalankan:
+
+1. Isi `MQTT_BROKER_URL` dan `MQTT_TOPIC` di `backend/.env` (lihat
+   `.env.example` — topic **harus** unik per instalasi karena
+   `broker.hivemq.com` publik dan dipakai banyak orang; kalau dua orang
+   pakai topic yang sama, data akan tercampur).
+2. Jalankan backend (`npm start` di folder `backend`) — subscriber MQTT
+   otomatis aktif kalau `MQTT_BROKER_URL` terisi.
+3. Samakan `MQTT_TOPIC` di `sketch.ino` dengan nilai di `backend/.env`,
+   lalu jalankan simulasi Wokwi seperti biasa.
+4. Kalau ingin device muncul sebagai device default dashboard
+   (`ecosense-01`, dipakai `/api/latest` & `/api/status` saat tidak ada
+   query `deviceId`), ganti juga `DEVICE_ID` di sketch dari
+   `"ecosense-01-sim"` ke `"ecosense-01"`.
+
+File `sketch.ino` yang di-commit ke repo ini memakai topic demo bersama
+`ecosense-station-demo/ingest` — ganti sebelum pemakaian sungguhan supaya
+tidak bentrok dengan pengguna lain.
 
 ## Status pengujian (sudah dicoba langsung di wokwi.com)
 
@@ -77,29 +88,31 @@ Untuk reproduksi tes ingest-ke-backend-asli, ganti `INGEST_URL` dan
   (DHT22, HC-SR04, dua potentiometer, pushbutton, LCD1602 I2C, LED, buzzer
   langsung GPIO) ter-render dan tersambung tanpa indikator putus.
 - **Compile penuh dengan library asli terpasang** (`ArduinoJson.h`, `DHT.h`,
-  `LiquidCrystal_I2C.h` — bukan stub) sudah dicoba dan **berhasil**, lewat
-  tombol "Install ... Library" di dialog "Build failed!" (jalur ini tidak
-  butuh sign-in ke akun Wokwi, berbeda dari tombol "Add a new library" di
-  panel Library Manager yang sempat diduga perlu sign-in). `WiFi.h` dan
-  `HTTPClient.h` memang sudah bawaan core ESP32 sejak awal (tidak perlu
-  Library Manager sama sekali).
-- Simulasi dijalankan ulang setelah ketiga library terpasang dan
-  **berhasil end-to-end**, terlihat di Serial Monitor:
+  `LiquidCrystal_I2C.h`, `PubSubClient.h` — bukan stub) sudah dicoba dan
+  **berhasil**. `ArduinoJson`/`DHT`/`LiquidCrystal_I2C` lewat tombol
+  "Install ... Library" di dialog "Build failed!" (tidak butuh sign-in);
+  `PubSubClient` lewat panel Library Manager (tombol `+`, cari nama,
+  pilih hasil yang namanya persis "PubSubClient"). `WiFi.h` sudah bawaan
+  core ESP32 (tidak perlu Library Manager).
+- Simulasi dijalankan ulang setelah keempat library terpasang dan
+  **berhasil end-to-end lewat MQTT**, terlihat di Serial Monitor:
   ```
-  EcoSense Station - Wokwi WiFi sim ready
-  dist_cm=-1.00 water_cm=-1.00 wifi=down
-  dist_cm=-1.00 water_cm=-1.00 wifi=up
-  HTTP POST -> http://httpbin.org/post
-  Payload: {"deviceId":"ecosense-01-sim","distanceCm":null,"waterHeightCm":null,
-  "ph":null,"turbidityNtu":null,"flowLpm":0,"volumeL":0,"tempC":null,"rh":null,
-  "lowWaterAlarm":false,"phAlarm":false,"turbAlarm":false}
-  HTTP status: 200
+  EcoSense Station - Wokwi WiFi+MQTT sim ready
+  dist_cm=-1.00 water_cm=-1.00 wifi=down mqtt=down
+  MQTT: mencoba konek sebagai ecosense-wokwi-af1ee385
+  MQTT: terhubung ke broker
+  dist_cm=-1.00 water_cm=-1.00 wifi=up mqtt=up
+  MQTT PUBLISH -> ecosense-station-demo/ingest
+  Payload: {"deviceId":"ecosense-01-sim","apiKey":"wokwi-sim-key","distanceCm":null,
+  "waterHeightCm":null,"ph":7,"turbidityNtu":100,"flowLpm":0,"volumeL":0,"tempC":null,
+  "rh":null,"lowWaterAlarm":false,"phAlarm":false,"turbAlarm":false}
+  MQTT publish result: OK
   ```
-  Ini mengonfirmasi: WiFi berhasil konek ke `Wokwi-GUEST`, payload JSON
-  terbentuk benar (field NAN dikirim sebagai `null`, bukan `0`/`nan` yang
-  menyesatkan), dan request HTTP POST benar-benar sampai ke internet nyata
-  lewat simulator Wokwi dengan respons `200` — kali ini dengan kode asli
-  yang sudah di-commit di `sketch.ino`, bukan versi stub.
+  Ini mengonfirmasi: WiFi berhasil konek ke `Wokwi-GUEST`, broker MQTT
+  publik (`broker.hivemq.com:1883`, plain TCP) berhasil dijangkau dari
+  dalam simulator Wokwi (berbeda dari HTTPS yang selalu gagal), payload
+  JSON terbentuk benar (field NAN dikirim sebagai `null`), dan publish
+  MQTT berhasil terus-menerus tiap 5 detik tanpa error.
 - `dist_cm=-1.00` dan `tempC/rh: null` di log adalah perilaku
   normal/terdokumentasi (bukan bug): ultrasonic/DHT belum punya sumber
   input simulasi (tidak ada potentiometer/slider yang digerakkan), jadi
@@ -119,9 +132,13 @@ Untuk reproduksi tes ingest-ke-backend-asli, ganti `INGEST_URL` dan
   Wokwi tetap tidak terlihat berubah, pastikan sudah memakai versi
   `sketch.ino` terbaru dari folder ini (bukan versi lama yang masih
   `PH_CALIBRATED = false`).
-- **Ingest ke backend asli**: sudah diverifikasi penuh lewat tunnel
-  localtunnel — lihat bagian "Ingest ke backend asli (sudah diverifikasi)"
-  di atas untuk detail lengkapnya.
+- **Ingest ke backend asli**: sudah diverifikasi penuh lewat MQTT (tanpa
+  tunnel sama sekali) — lihat bagian "Ingest ke backend asli lewat MQTT
+  (sudah diverifikasi)" di atas untuk detail lengkapnya. Data dari Wokwi
+  (`deviceId: "ecosense-01"` setelah DEVICE_ID disamakan dengan default
+  dashboard) muncul live di dashboard `http://localhost:3000/` — status
+  "Online", pH & Turbidity ikut berubah saat pot diputar, kartu nilai
+  ter-update tiap 10 detik dan grafik ikut auto-refresh.
 - **Belum diverifikasi**: tampilan visual LCD (teks tidak sempat dibaca
   jelas dari screenshot, meski render & wiring-nya tidak error), dan
   reload halaman Wokwi dari URL project untuk memastikan perubahan
@@ -130,12 +147,16 @@ Untuk reproduksi tes ingest-ke-backend-asli, ganti `INGEST_URL` dan
 
 ## Perbedaan dengan firmware fisik (`../firmware/esp32-wifi`)
 
-Hanya tiga konstanta yang berbeda, khusus untuk simulasi:
+Firmware fisik memakai HTTP POST langsung ke backend (perangkat fisik di
+jaringan WiFi asli tidak punya keterbatasan HTTPS/TLS seperti Wokwi, dan
+biasanya 1 arah ke 1 backend saja sehingga tidak perlu broker MQTT publik
+dengan risiko topic bentrok). Wokwi memakai MQTT karena keterbatasan
+simulator (lihat bagian "Kenapa pakai MQTT" di atas).
 
 | Konstanta | Wokwi (`wokwi/sketch.ino`) | Fisik (`firmware/esp32-wifi/esp32-wifi.ino`) |
 | --- | --- | --- |
 | `WIFI_SSID` / `WIFI_PASSWORD` | `"Wokwi-GUEST"` / `""` | WiFi asli lokasi Anda |
-| `INGEST_URL` | `http://httpbin.org/post` (uji publik) | URL backend asli Anda |
-| `DEVICE_API_KEY` | `"wokwi-sim-key"` (bebas) | harus sama dengan `backend/.env` |
+| Jalur kirim data | MQTT ke `broker.hivemq.com:1883` | HTTP POST ke `INGEST_URL` backend asli Anda |
+| `DEVICE_API_KEY` | `"wokwi-sim-key"` (bebas, dikirim di field `apiKey`) | harus sama dengan `backend/.env`, dikirim di header `x-api-key` |
 
 Logika sensor, kalibrasi, alarm, dan LCD identik dengan firmware fisik.
