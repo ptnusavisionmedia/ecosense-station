@@ -56,6 +56,18 @@ npm start
 
 Dashboard web otomatis terbuka di `http://localhost:3000/`.
 
+**Belum punya ESP32/data sungguhan?** Jalankan simulator data bawaan ini di
+terminal terpisah supaya dashboard langsung terlihat "hidup" (kartu nilai
+berubah tiap 5 detik, grafik auto-refresh tiap 10 detik):
+
+```bash
+cd backend
+node scripts/simulate-data.js
+```
+
+Ini hanya untuk demo/pengembangan — matikan (`Ctrl+C`) kalau sudah mau
+pakai data sungguhan dari ESP32/Wokwi.
+
 ### 2. Firmware ESP32
 
 Buka `firmware/esp32-wifi/esp32-wifi.ino` di Arduino IDE. Install library:

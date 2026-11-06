@@ -281,6 +281,13 @@ filterForm.addEventListener("submit", (e) => {
   loadHistory(fromMs, toMs);
 });
 
+function reloadHistoryFromCurrentFilter() {
+  const fromMs = toEpochMs(fromDateInput.value, false);
+  const toMs = toEpochMs(toDateInput.value, true);
+  if (fromMs === null || toMs === null || fromMs > toMs) return;
+  loadHistory(fromMs, toMs);
+}
+
 function init() {
   const { from, to } = defaultDateRange();
   fromDateInput.value = dateInputValue(from);
@@ -290,6 +297,7 @@ function init() {
   loadHistory(from.getTime(), to.getTime());
 
   setInterval(pollLatestAndStatus, POLL_INTERVAL_MS);
+  setInterval(reloadHistoryFromCurrentFilter, POLL_INTERVAL_MS);
 }
 
 init();
