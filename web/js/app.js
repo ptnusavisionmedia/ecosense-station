@@ -21,6 +21,17 @@ const ALARM_LABELS = {
 };
 
 let charts = {};
+const cardAnimState = {};
+
+// Perkiraan tinggi reservoir maksimum (cm) hanya untuk visual mini-tank di
+// kartu "Tinggi Air" — tidak memengaruhi angka yang ditampilkan.
+const WATER_TANK_MAX_CM = 100;
+
+const CARD_ALARM_KEY = {
+  waterHeightCm: "lowWaterAlarm",
+  ph: "phAlarm",
+  turbidityNtu: "turbAlarm",
+};
 
 function fmt(value, digits = 1) {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
@@ -35,12 +46,56 @@ async function fetchJson(path) {
   return res.json();
 }
 
-function renderCards(reading) {
+// Animasi count-up halus dari nilai lama ke nilai baru (tanpa library).
+function animateValue(el, from, to, digits) {
+  const start = performance.now();
+  const duration = 600;
+  function step(now) {
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const current = from + (to - from) * eased;
+    el.textContent = current.toFixed(digits);
+    if (t < 1) requestAnimationFrame(step);
+    else el.textContent = to.toFixed(digits);
+  }
+  requestAnimationFrame(step);
+}
+
+function renderCards(reading, alarms) {
   const cards = cardsEl.querySelectorAll(".card");
   cards.forEach((card) => {
     const key = card.dataset.key;
     const valueEl = card.querySelector(".card-value");
-    valueEl.textContent = reading ? fmt(reading[key]) : "—";
+    const raw = reading ? reading[key] : null;
+    const hasValue = raw !== null && raw !== undefined && !Number.isNaN(Number(raw));
+
+    if (hasValue) {
+      const digits = key === "ph" ? 2 : 1;
+      const next = Number(raw);
+      const prev = cardAnimState[key];
+      if (prev !== undefined && prev !== next) {
+        animateValue(valueEl, prev, next, digits);
+      } else {
+        valueEl.textContent = next.toFixed(digits);
+      }
+      cardAnimState[key] = next;
+    } else {
+      valueEl.textContent = "—";
+      cardAnimState[key] = undefined;
+    }
+
+    const alarmKey = CARD_ALARM_KEY[key];
+    card.classList.toggle("alarm", Boolean(alarmKey && alarms && alarms[alarmKey]));
+
+    if (key === "waterHeightCm") {
+      const fillEl = card.querySelector(".card-tank-fill");
+      if (fillEl) {
+        const pct = hasValue
+          ? Math.max(4, Math.min(100, (Number(raw) / WATER_TANK_MAX_CM) * 100))
+          : 0;
+        fillEl.style.height = `${pct}%`;
+      }
+    }
   });
 }
 
@@ -73,7 +128,7 @@ async function pollLatestAndStatus() {
       fetchJson("/api/status"),
     ]);
     connError.classList.add("hidden");
-    renderCards(latest.reading);
+    renderCards(latest.reading, status.alarms);
     renderStatus(status);
     renderAlarmBanner(status.alarms);
   } catch (err) {
@@ -110,10 +165,24 @@ function ensureChart(id, config) {
   charts[id] = new Chart(ctx, config);
 }
 
+function makeGradient(ctx, colorHex) {
+  const chartArea = ctx.chart.chartArea;
+  if (!chartArea) return `${colorHex}22`;
+  const gradient = ctx.chart.ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+  gradient.addColorStop(0, `${colorHex}55`);
+  gradient.addColorStop(1, `${colorHex}00`);
+  return gradient;
+}
+
 function baseLineOptions() {
   return {
     responsive: true,
-    animation: false,
+    animation: { duration: 650, easing: "easeOutCubic" },
+    interaction: { mode: "index", intersect: false },
+    elements: {
+      point: { radius: 0, hoverRadius: 5, hitRadius: 10 },
+      line: { borderWidth: 2.5 },
+    },
     scales: {
       x: {
         type: "linear",
@@ -162,8 +231,9 @@ function renderCharts(readings) {
           label: "Tinggi air (cm)",
           data: points("waterHeightCm"),
           borderColor: "#38bdf8",
-          backgroundColor: "transparent",
-          tension: 0.2,
+          backgroundColor: (ctx) => makeGradient(ctx, "#38bdf8"),
+          fill: true,
+          tension: 0.35,
         },
       ],
     },
@@ -178,8 +248,9 @@ function renderCharts(readings) {
           label: "pH",
           data: points("ph"),
           borderColor: "#22c55e",
-          backgroundColor: "transparent",
-          tension: 0.2,
+          backgroundColor: (ctx) => makeGradient(ctx, "#22c55e"),
+          fill: true,
+          tension: 0.35,
           yAxisID: "y",
         },
         {
@@ -187,7 +258,7 @@ function renderCharts(readings) {
           data: points("turbidityNtu"),
           borderColor: "#f59e0b",
           backgroundColor: "transparent",
-          tension: 0.2,
+          tension: 0.35,
           yAxisID: "y1",
         },
       ],
@@ -213,15 +284,16 @@ function renderCharts(readings) {
           label: "Suhu (°C)",
           data: points("tempC"),
           borderColor: "#ef4444",
-          backgroundColor: "transparent",
-          tension: 0.2,
+          backgroundColor: (ctx) => makeGradient(ctx, "#ef4444"),
+          fill: true,
+          tension: 0.35,
         },
         {
           label: "Kelembapan (%)",
           data: points("rh"),
           borderColor: "#a855f7",
           backgroundColor: "transparent",
-          tension: 0.2,
+          tension: 0.35,
         },
       ],
     },

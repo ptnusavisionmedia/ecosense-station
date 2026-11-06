@@ -8,8 +8,12 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
+  <div class="aurora" aria-hidden="true">
+    <span></span><span></span><span></span>
+  </div>
+
   <header class="topbar">
-    <h1>🌊 EcoSense Station</h1>
+    <h1><span class="logo-wave">🌊</span> EcoSense Station</h1>
     <div class="device-status" id="deviceStatus">
       <span class="dot" id="statusDot"></span>
       <span id="statusText">Menghubungkan...</span>
@@ -23,40 +27,43 @@
     </div>
 
     <section class="cards" id="cards">
-      <div class="card" data-key="waterHeightCm">
+      <div class="card" data-key="waterHeightCm" data-icon="💧" data-accent="water">
+        <div class="card-top">
+          <span class="card-icon">💧</span>
+          <div class="card-tank"><div class="card-tank-fill"></div></div>
+        </div>
         <div class="card-label">Tinggi Air</div>
-        <div class="card-value">—</div>
-        <div class="card-unit">cm</div>
+        <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">cm</span></div>
       </div>
-      <div class="card" data-key="ph">
+      <div class="card" data-key="ph" data-icon="🧪" data-accent="ph">
+        <div class="card-top"><span class="card-icon">🧪</span></div>
         <div class="card-label">pH</div>
-        <div class="card-value">—</div>
-        <div class="card-unit"></div>
+        <div class="card-value-row"><span class="card-value">—</span><span class="card-unit"></span></div>
       </div>
-      <div class="card" data-key="turbidityNtu">
+      <div class="card" data-key="turbidityNtu" data-icon="🌫️" data-accent="turb">
+        <div class="card-top"><span class="card-icon">🌫️</span></div>
         <div class="card-label">Turbidity</div>
-        <div class="card-value">—</div>
-        <div class="card-unit">NTU</div>
+        <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">NTU</span></div>
       </div>
-      <div class="card" data-key="flowLpm">
+      <div class="card" data-key="flowLpm" data-icon="🚿" data-accent="flow">
+        <div class="card-top"><span class="card-icon">🚿</span></div>
         <div class="card-label">Flow</div>
-        <div class="card-value">—</div>
-        <div class="card-unit">L/menit</div>
+        <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">L/menit</span></div>
       </div>
-      <div class="card" data-key="volumeL">
+      <div class="card" data-key="volumeL" data-icon="🪣" data-accent="volume">
+        <div class="card-top"><span class="card-icon">🪣</span></div>
         <div class="card-label">Volume Kumulatif</div>
-        <div class="card-value">—</div>
-        <div class="card-unit">L</div>
+        <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">L</span></div>
       </div>
-      <div class="card" data-key="tempC">
+      <div class="card" data-key="tempC" data-icon="🌡️" data-accent="temp">
+        <div class="card-top"><span class="card-icon">🌡️</span></div>
         <div class="card-label">Suhu</div>
-        <div class="card-value">—</div>
-        <div class="card-unit">°C</div>
+        <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">°C</span></div>
       </div>
-      <div class="card" data-key="rh">
+      <div class="card" data-key="rh" data-icon="☁️" data-accent="rh">
+        <div class="card-top"><span class="card-icon">☁️</span></div>
         <div class="card-label">Kelembapan</div>
-        <div class="card-value">—</div>
-        <div class="card-unit">%</div>
+        <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">%</span></div>
       </div>
     </section>
 
