@@ -126,17 +126,16 @@ mengirim data (dianggap offline setelah `DEVICE_OFFLINE_MINUTES` menit).
   sungguhan** untuk verifikasi visual (grafik, polling, filter tanggal).
   Disarankan membuka `http://localhost:3000/` di browser dan mengecek
   console sebelum dianggap final.
-- **Firmware ESP32 WiFi**: logikanya (WiFi connect, pembentukan payload JSON,
-  HTTP POST) sudah dites langsung di simulator Wokwi lewat [`wokwi/`](wokwi/)
-  — WiFi berhasil konek ke jaringan virtual Wokwi dan request POST ke
-  `httpbin.org` mendapat balasan `HTTP 200`. `WiFi.h`/`HTTPClient.h` juga
-  terkonfirmasi compile bersih (bawaan core ESP32). Yang **belum**
-  terverifikasi: compile dengan ketiga library pihak ketiga (DHT,
-  LiquidCrystal_I2C, ArduinoJson) benar-benar terpasang — di sesi uji coba
-  ini Library Manager Wokwi butuh sign-in yang tidak tersedia, jadi ketiganya
-  sempat distub sementara hanya untuk tes logika. Pasang ketiga library itu
-  dan compile ulang (Arduino IDE atau Wokwi dengan akun) sebelum flash ke
-  perangkat fisik. Detail lengkap ada di [`wokwi/README.md`](wokwi/README.md).
+- **Firmware ESP32 WiFi**: sudah dites **penuh** (compile asli, bukan stub)
+  di simulator Wokwi lewat [`wokwi/`](wokwi/) — WiFi berhasil konek ke
+  jaringan virtual Wokwi, ketiga library pihak ketiga (DHT, LiquidCrystal_I2C,
+  ArduinoJson) berhasil dipasang lewat tombol install di dialog error build
+  (tidak perlu sign-in akun Wokwi), dan request POST ke `httpbin.org`
+  mendapat balasan `HTTP 200`. Yang **belum** terverifikasi: compile dengan
+  Arduino IDE di komputer fisik (hanya diuji di Wokwi), dan ingest ke
+  backend `../backend` yang sesungguhnya (masih ke `httpbin.org`, perlu
+  tunnel seperti ngrok untuk tes nyata). Detail lengkap ada di
+  [`wokwi/README.md`](wokwi/README.md).
 
 ## Langkah lanjutan yang disarankan
 

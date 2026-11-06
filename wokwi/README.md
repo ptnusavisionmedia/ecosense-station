@@ -7,14 +7,19 @@ sesungguhnya.
 
 ## Cara pakai
 
-1. Buka [wokwi.com/projects/new/esp32](https://wokwi.com/projects/new/esp32).
-2. Install library Arduino di `libraries.txt` (DHT sensor library, Adafruit
-   Unified Sensor, LiquidCrystal_I2C, **ArduinoJson**) lewat Library Manager
-   (perlu sign in ke akun Wokwi — lihat catatan di bawah).
-3. Ganti isi `diagram.json` dan `sketch.ino` project Wokwi dengan file di
+1. Buka [wokwi.com/projects/new/esp32](https://wokwi.com/projects/new/esp32)
+   (atau project yang sudah disiapkan: [wokwi.com/projects/479938633151595521](https://wokwi.com/projects/479938633151595521)).
+2. Ganti isi `diagram.json` dan `sketch.ino` project Wokwi dengan file di
    folder ini.
-4. Jalankan simulasi. ESP32 akan konek ke jaringan WiFi virtual bawaan
-   Wokwi (`Wokwi-GUEST`, tanpa password) yang punya akses internet
+3. Klik tombol **Start the simulation** (▶). Build pertama kali akan gagal
+   dengan dialog "Build failed!" karena `ArduinoJson.h` belum terpasang —
+   klik tombol **"Install ArduinoJson Library"** di dialog itu (tidak perlu
+   sign in ke akun Wokwi untuk jalur ini). Ulangi hal yang sama untuk
+   `DHT.h` dan `LiquidCrystal_I2C.h` jika muncul (atau install ketiganya
+   sekaligus lewat panel **Library Manager**, tombol `+` → cari nama
+   library di `libraries.txt`).
+4. Jalankan ulang simulasi. ESP32 akan konek ke jaringan WiFi virtual
+   bawaan Wokwi (`Wokwi-GUEST`, tanpa password) yang punya akses internet
    sungguhan dari dalam simulator.
 
 ## Kenapa target-nya httpbin.org, bukan backend asli
@@ -34,39 +39,40 @@ sebagai `INGEST_URL`) — belum dilakukan di pengujian ini.
   yang sudah tervalidasi — tipe board `board-esp32-devkit-c-v4`, semua part
   (DHT22, HC-SR04, dua potentiometer, pushbutton, LCD1602 I2C, LED, buzzer
   langsung GPIO) ter-render dan tersambung tanpa indikator putus.
-- **Compile penuh** (dengan `#include <ArduinoJson.h>`, `<DHT.h>`,
-  `<LiquidCrystal_I2C.h>`) **gagal** di sesi anonim karena tombol
-  "Add a new library" di Library Manager Wokwi tidak merespons tanpa
-  sign-in — sama seperti kendala yang sudah didokumentasikan di
-  `ecosense-station-wokwi/README.md` sebelumnya. `WiFi.h` dan
-  `HTTPClient.h` **tidak** bermasalah karena sudah bawaan core ESP32
-  (tidak perlu Library Manager).
-- **Untuk tetap memvalidasi logika WiFi/HTTP**, tiga include tadi distub
-  sementara (class dummy + implementasi `JsonDocument`/`serializeJson`
-  minimal, hanya untuk tes, tidak disimpan ke file ini) dan di-compile +
-  dijalankan ulang. Hasilnya **berhasil end-to-end**, terlihat di Serial
-  Monitor:
+- **Compile penuh dengan library asli terpasang** (`ArduinoJson.h`, `DHT.h`,
+  `LiquidCrystal_I2C.h` — bukan stub) sudah dicoba dan **berhasil**, lewat
+  tombol "Install ... Library" di dialog "Build failed!" (jalur ini tidak
+  butuh sign-in ke akun Wokwi, berbeda dari tombol "Add a new library" di
+  panel Library Manager yang sempat diduga perlu sign-in). `WiFi.h` dan
+  `HTTPClient.h` memang sudah bawaan core ESP32 sejak awal (tidak perlu
+  Library Manager sama sekali).
+- Simulasi dijalankan ulang setelah ketiga library terpasang dan
+  **berhasil end-to-end**, terlihat di Serial Monitor:
   ```
   EcoSense Station - Wokwi WiFi sim ready
   dist_cm=-1.00 water_cm=-1.00 wifi=down
   dist_cm=-1.00 water_cm=-1.00 wifi=up
   HTTP POST -> http://httpbin.org/post
-  Payload: {"deviceId":"ecosense-01-sim","distanceCm":null,"flowLpm":0.0000,
-  "lowWaterAlarm":false,"ph":null,"phAlarm":false,"rh":55.0000,"tempC":25.0000,
-  "turbAlarm":false,"turbidityNtu":null,"volumeL":0.0000,"waterHeightCm":null}
+  Payload: {"deviceId":"ecosense-01-sim","distanceCm":null,"waterHeightCm":null,
+  "ph":null,"turbidityNtu":null,"flowLpm":0,"volumeL":0,"tempC":null,"rh":null,
+  "lowWaterAlarm":false,"phAlarm":false,"turbAlarm":false}
   HTTP status: 200
   ```
   Ini mengonfirmasi: WiFi berhasil konek ke `Wokwi-GUEST`, payload JSON
   terbentuk benar (field NAN dikirim sebagai `null`, bukan `0`/`nan` yang
   menyesatkan), dan request HTTP POST benar-benar sampai ke internet nyata
-  lewat simulator Wokwi dengan respons `200`.
-- `dist_cm=-1.00` di log adalah perilaku normal/terdokumentasi (bukan bug):
-  itu artinya pembacaan ultrasonic timeout → ditandai `NAN` → dicetak
-  sebagai `-1`, sesuai desain "pembacaan tidak valid ditandai error, bukan
-  dianggap reservoir kosong".
-- **Belum diverifikasi**: compile dengan ketiga library asli terpasang
-  (perlu sign-in Wokwi), dan ingest ke backend `../backend` yang
-  sesungguhnya (perlu tunnel seperti ngrok, belum dilakukan).
+  lewat simulator Wokwi dengan respons `200` — kali ini dengan kode asli
+  yang sudah di-commit di `sketch.ino`, bukan versi stub.
+- `dist_cm=-1.00` dan `tempC/rh: null` di log adalah perilaku
+  normal/terdokumentasi (bukan bug): ultrasonic/DHT belum punya sumber
+  input simulasi (tidak ada potentiometer/slider yang digerakkan), jadi
+  pembacaan ditandai `NAN` → dikirim sebagai `null`/`-1`, sesuai desain
+  "pembacaan tidak valid ditandai error, bukan dianggap nilai nol".
+- **Belum diverifikasi**: ingest ke backend `../backend` yang sesungguhnya
+  (perlu tunnel seperti ngrok — `INGEST_URL` saat ini masih diarahkan ke
+  `httpbin.org` sebagai target uji publik, bukan backend asli), dan
+  tampilan visual LCD (teks tidak sempat dibaca jelas dari screenshot,
+  meski render & wiring-nya tidak error).
 
 ## Perbedaan dengan firmware fisik (`../firmware/esp32-wifi`)
 
