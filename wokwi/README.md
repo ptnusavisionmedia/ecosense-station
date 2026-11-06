@@ -22,16 +22,53 @@ sesungguhnya.
    bawaan Wokwi (`Wokwi-GUEST`, tanpa password) yang punya akses internet
    sungguhan dari dalam simulator.
 
-## Kenapa target-nya httpbin.org, bukan backend asli
+## Kenapa default-nya httpbin.org, bukan backend asli
 
-`INGEST_URL` di sketch ini diarahkan ke `http://httpbin.org/post` (endpoint
-publik yang sekadar meng-*echo* balik request yang diterima), **bukan**
-`../backend` yang sesungguhnya. Backend asli berjalan di `localhost`
-komputer Anda sendiri, sementara simulator Wokwi jalan di cloud —
-keduanya tidak saling terjangkau secara langsung. Untuk menguji ingest ke
-backend asli dari Wokwi, backend itu perlu diekspos ke internet dulu, misalnya
-lewat [ngrok](https://ngrok.com/) (`ngrok http 3000`, lalu pakai URL `https://...ngrok-free.app/api/ingest`
-sebagai `INGEST_URL`) — belum dilakukan di pengujian ini.
+Agar project ini bisa langsung dicoba siapa pun tanpa setup tambahan,
+`INGEST_URL` default di sketch diarahkan ke `http://httpbin.org/post`
+(endpoint publik yang sekadar meng-*echo* balik request yang diterima),
+**bukan** `../backend` yang sesungguhnya. Backend asli berjalan di
+`localhost` komputer Anda sendiri, sementara simulator Wokwi jalan di
+cloud — keduanya tidak saling terjangkau secara langsung kecuali backend
+diekspos lewat tunnel. Ini **sudah dicoba dan berhasil** — lihat bagian
+"Ingest ke backend asli (sudah diverifikasi)" di bawah.
+
+### Ingest ke backend asli (sudah diverifikasi)
+
+Untuk menguji ingest sungguhan ke `../backend`, backend perlu diekspos ke
+internet lewat tunnel. Dua catatan penting dari hasil uji coba:
+
+1. **Wokwi tidak bisa membuka koneksi HTTPS/TLS sama sekali** dari dalam
+   simulator (dicoba ke `https://httpbin.org` pun gagal dengan error
+   `connection refused`, bukan masalah spesifik ngrok). Jadi tunnel yang
+   dipakai **wajib mengizinkan akses HTTP polos** tanpa redirect paksa ke
+   HTTPS.
+   - `ngrok http` di akun gratis **tidak bisa dipakai** — domain
+     `*.ngrok-free.dev` selalu redirect `307` ke HTTPS.
+   - `ngrok tcp` (raw TCP, tanpa TLS) bisa dipakai, tapi akun gratis
+     ngrok sekarang mewajibkan verifikasi kartu kredit untuk fitur ini.
+   - **[localtunnel](https://github.com/localtunnel/localtunnel)** (npm,
+     tanpa akun) terbukti bisa: `http://<subdomain>.loca.lt/...` bisa
+     diakses lewat HTTP polos tanpa redirect. Jalankan dengan
+     `npx localtunnel --port 3000` (atau install lokal lalu
+     `node node_modules/localtunnel/bin/lt.js --port 3000` supaya lebih
+     stabil daripada lewat `npx`).
+2. **Naikkan timeout HTTP di sketch** (`http.setTimeout(...)`) dari 4000ms
+   ke sekitar 15000ms — round-trip lewat tunnel + jaringan simulasi Wokwi
+   lebih lambat daripada akses langsung, jadi 4 detik kerap menghasilkan
+   `HTTP status: 408` meski request sebenarnya sampai.
+
+Dengan dua penyesuaian itu, hasilnya **berhasil end-to-end**:
+`HTTP status: 201` di Serial Monitor Wokwi, dan baris data baru
+(`deviceId: "ecosense-01-sim"`) benar-benar masuk ke database SQLite
+backend asli (diverifikasi langsung lewat query ke `backend/data/ecosense.db`,
+bukan cuma asumsi dari status code).
+
+File `sketch.ino` yang di-commit ke repo ini **tetap** memakai
+`http://httpbin.org/post` sebagai default (bukan URL tunnel, karena URL
+tunnel gratis bersifat sementara dan berubah tiap kali dijalankan ulang).
+Untuk reproduksi tes ingest-ke-backend-asli, ganti `INGEST_URL` dan
+`http.setTimeout(...)` sesuai poin di atas sebelum menjalankan simulasi.
 
 ## Status pengujian (sudah dicoba langsung di wokwi.com)
 
@@ -68,11 +105,14 @@ sebagai `INGEST_URL`) — belum dilakukan di pengujian ini.
   input simulasi (tidak ada potentiometer/slider yang digerakkan), jadi
   pembacaan ditandai `NAN` → dikirim sebagai `null`/`-1`, sesuai desain
   "pembacaan tidak valid ditandai error, bukan dianggap nilai nol".
-- **Belum diverifikasi**: ingest ke backend `../backend` yang sesungguhnya
-  (perlu tunnel seperti ngrok — `INGEST_URL` saat ini masih diarahkan ke
-  `httpbin.org` sebagai target uji publik, bukan backend asli), dan
-  tampilan visual LCD (teks tidak sempat dibaca jelas dari screenshot,
-  meski render & wiring-nya tidak error).
+- **Ingest ke backend asli**: sudah diverifikasi penuh lewat tunnel
+  localtunnel — lihat bagian "Ingest ke backend asli (sudah diverifikasi)"
+  di atas untuk detail lengkapnya.
+- **Belum diverifikasi**: tampilan visual LCD (teks tidak sempat dibaca
+  jelas dari screenshot, meski render & wiring-nya tidak error), dan
+  reload halaman Wokwi dari URL project untuk memastikan perubahan
+  tersimpan permanen (sesi uji coba ini anonim, perubahan di editor hanya
+  berlaku untuk sesi berjalan kecuali disimpan manual oleh pemilik akun).
 
 ## Perbedaan dengan firmware fisik (`../firmware/esp32-wifi`)
 

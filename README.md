@@ -131,11 +131,16 @@ mengirim data (dianggap offline setelah `DEVICE_OFFLINE_MINUTES` menit).
   jaringan virtual Wokwi, ketiga library pihak ketiga (DHT, LiquidCrystal_I2C,
   ArduinoJson) berhasil dipasang lewat tombol install di dialog error build
   (tidak perlu sign-in akun Wokwi), dan request POST ke `httpbin.org`
-  mendapat balasan `HTTP 200`. Yang **belum** terverifikasi: compile dengan
-  Arduino IDE di komputer fisik (hanya diuji di Wokwi), dan ingest ke
-  backend `../backend` yang sesungguhnya (masih ke `httpbin.org`, perlu
-  tunnel seperti ngrok untuk tes nyata). Detail lengkap ada di
-  [`wokwi/README.md`](wokwi/README.md).
+  mendapat balasan `HTTP 200`. **Ingest ke backend `../backend` yang
+  sesungguhnya juga sudah diverifikasi** lewat tunnel localtunnel — data
+  dari simulator Wokwi terbukti masuk ke database SQLite backend asli
+  (`HTTP status: 201`, dicek langsung lewat query ke database, bukan cuma
+  asumsi dari status code). Catatan penting: Wokwi tidak bisa membuka
+  koneksi HTTPS sama sekali, jadi tunnel yang dipakai harus mengizinkan
+  HTTP polos (ngrok gratis tidak bisa — selalu redirect ke HTTPS; ngrok TCP
+  butuh kartu kredit; localtunnel terbukti bisa). Yang **belum**
+  terverifikasi: compile dengan Arduino IDE di komputer fisik (hanya diuji
+  di Wokwi). Detail lengkap ada di [`wokwi/README.md`](wokwi/README.md).
 
 ## Langkah lanjutan yang disarankan
 
