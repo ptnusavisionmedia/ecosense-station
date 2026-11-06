@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoSense Station — Dashboard Monitoring</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>🌊 EcoSense Station</h1>
+    <div class="device-status" id="deviceStatus">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">Menghubungkan...</span>
+    </div>
+  </header>
+
+  <main>
+    <div id="alarmBanner" class="alarm-banner hidden"></div>
+    <div id="connError" class="conn-error hidden">
+      Tidak bisa terhubung ke server backend. Periksa apakah backend sedang berjalan.
+    </div>
+
+    <section class="cards" id="cards">
+      <div class="card" data-key="waterHeightCm">
+        <div class="card-label">Tinggi Air</div>
+        <div class="card-value">—</div>
+        <div class="card-unit">cm</div>
+      </div>
+      <div class="card" data-key="ph">
+        <div class="card-label">pH</div>
+        <div class="card-value">—</div>
+        <div class="card-unit"></div>
+      </div>
+      <div class="card" data-key="turbidityNtu">
+        <div class="card-label">Turbidity</div>
+        <div class="card-value">—</div>
+        <div class="card-unit">NTU</div>
+      </div>
+      <div class="card" data-key="flowLpm">
+        <div class="card-label">Flow</div>
+        <div class="card-value">—</div>
+        <div class="card-unit">L/menit</div>
+      </div>
+      <div class="card" data-key="volumeL">
+        <div class="card-label">Volume Kumulatif</div>
+        <div class="card-value">—</div>
+        <div class="card-unit">L</div>
+      </div>
+      <div class="card" data-key="tempC">
+        <div class="card-label">Suhu</div>
+        <div class="card-value">—</div>
+        <div class="card-unit">°C</div>
+      </div>
+      <div class="card" data-key="rh">
+        <div class="card-label">Kelembapan</div>
+        <div class="card-value">—</div>
+        <div class="card-unit">%</div>
+      </div>
+    </section>
+
+    <section class="history">
+      <div class="history-header">
+        <h2>Histori & Tren</h2>
+        <form id="filterForm" class="filter-form">
+          <label>
+            Dari
+            <input type="date" id="fromDate" />
+          </label>
+          <label>
+            Sampai
+            <input type="date" id="toDate" />
+          </label>
+          <button type="submit">Terapkan</button>
+        </form>
+      </div>
+      <div id="filterError" class="filter-error hidden"></div>
+
+      <div class="volume-summary" id="volumeSummary">
+        Total pemakaian air periode ini: <strong id="volumeSummaryValue">—</strong>
+      </div>
+
+      <div class="chart-grid">
+        <div class="chart-box">
+          <h3>Tinggi Air (cm)</h3>
+          <canvas id="chartWater"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>pH & Turbidity</h3>
+          <canvas id="chartQuality"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Suhu (°C) & Kelembapan (%)</h3>
+          <canvas id="chartClimate"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>EcoSense Station — data diperbarui otomatis setiap 10 detik.</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
