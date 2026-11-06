@@ -22,8 +22,22 @@
   YF-S201). Buzzer digerakkan langsung dari GPIO (Wokwi versi gratis tidak
   punya part transistor).
 
-  Library Arduino: DHT sensor library (Adafruit), Adafruit Unified Sensor,
-  LiquidCrystal_I2C, ArduinoJson (Benoit Blanchon), PubSubClient (Nick O'Leary).
+  Library Arduino: "DHT sensor library" (Adafruit — dikonfirmasi langsung di
+  wokwi.com ini satu-satunya nama library yang resolver Wokwi pakai untuk
+  #include <DHT.h>; "DHT sensor library for ESPx" boleh dipasang berdampingan
+  tapi TIDAK dibutuhkan untuk compile), LiquidCrystal_I2C, ArduinoJson
+  (Benoit Blanchon), PubSubClient (Nick O'Leary).
+
+  CATATAN SIMULASI (dikonfirmasi lewat pengujian langsung): mengatur
+  attrs "distance"/"temperature"/"humidity" di diagram.json (atau lewat
+  slider part di kanvas) HANYA mengubah nilai yang ditampilkan di panel
+  part — pada sesi anonim (belum sign in / belum di-save sebagai project
+  sendiri), nilai itu TIDAK sampai ke sinyal elektrik yang dibaca firmware
+  (pulseIn() untuk HC-SR04 tetap 0, dht.readTemperature()/readHumidity()
+  tetap NAN) walau build & WiFi/MQTT berhasil penuh. Ini keterbatasan sesi
+  simulator Wokwi, BUKAN bug kode maupun wiring (pin, divider tegangan, dan
+  pull-up sudah diverifikasi benar). Di firmware fisik (bukan simulasi),
+  sensor asli akan terbaca normal. Lihat wokwi/README.md untuk detail.
 */
 
 #include <WiFi.h>

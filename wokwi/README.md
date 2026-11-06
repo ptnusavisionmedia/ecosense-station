@@ -118,6 +118,31 @@ tidak bentrok dengan pengguna lain.
   input simulasi (tidak ada potentiometer/slider yang digerakkan), jadi
   pembacaan ditandai `NAN` → dikirim sebagai `null`/`-1`, sesuai desain
   "pembacaan tidak valid ditandai error, bukan dianggap nilai nol".
+- **Tinggi Air / Suhu / Kelembapan selalu kosong (`—`) di dashboard web** —
+  sudah diselidiki langsung (2026-11-06). `diagram.json` di folder ini
+  sudah diisi `attrs` untuk `us1` (`distance`) dan `dht1` (`temperature`,
+  `humidity`) supaya HC-SR04 & DHT22 tidak kosong secara default. Namun
+  pada **sesi anonim** (belum sign in ke akun Wokwi / project belum
+  di-save), mengisi attrs lewat `diagram.json` atau lewat slider di panel
+  part HANYA mengubah angka yang ditampilkan di panel itu — nilainya
+  **tidak ikut terbaca oleh firmware**: `pulseIn()` untuk ECHO tetap
+  mengembalikan `0` dan `dht.readTemperature()/readHumidity()` tetap
+  `NAN`, walau build, WiFi, dan publish MQTT semuanya berhasil penuh.
+  Sudah dicoba beberapa variasi untuk menyingkirkan kemungkinan lain:
+  - Melepas resistor voltage-divider ECHO (langsung `us1:ECHO` → `esp:D18`)
+    — hasil sama persis, jadi bukan soal ambang tegangan/divider.
+  - Menggeser slider distance/temperature langsung di kanvas saat simulasi
+    jalan (bukan cuma lewat `diagram.json`) — hasil sama persis.
+  - Pin, resistor pull-up DHT, dan tipe board sudah diverifikasi benar.
+  
+  Kesimpulan: ini **keterbatasan sesi simulator Wokwi versi anonim**,
+  bukan bug kode/wiring proyek ini. Agar Tinggi Air/Suhu/Kelembapan benar
+  benar terbaca di simulator, project ini perlu dibuka dengan akun Wokwi
+  yang sudah sign in (bukan sesi anonim) lalu disimpan — baru attrs
+  `distance`/`temperature`/`humidity` konsisten terbawa ke sinyal yang
+  dibaca firmware. Pada **perangkat fisik asli** (bukan simulasi),
+  keterbatasan ini tidak berlaku — sensor HC-SR04/DHT22 sungguhan akan
+  langsung terbaca normal dengan firmware yang sama persis.
 - **Memutar potentiometer `pot_ph`/`pot_turb` awalnya tidak berefek ke
   nilai pH/turbidity** — ini **bukan bug wiring**, melainkan karena
   `PH_CALIBRATED`/`TURB_CALIBRATED` sengaja di-set `false` pada draf awal

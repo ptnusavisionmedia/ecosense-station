@@ -5,10 +5,10 @@
   "parts": [
     { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
 
-    { "type": "wokwi-dht22", "id": "dht1", "top": -140, "left": -260, "attrs": {} },
+    { "type": "wokwi-dht22", "id": "dht1", "top": -140, "left": -260, "attrs": { "temperature": "27.5", "humidity": "65" } },
     { "type": "wokwi-resistor", "id": "r_dht_pullup", "top": -160, "left": -150, "attrs": { "value": "10000" }, "rotate": 90 },
 
-    { "type": "wokwi-hc-sr04", "id": "us1", "top": -260, "left": 40, "attrs": {} },
+    { "type": "wokwi-hc-sr04", "id": "us1", "top": -260, "left": 40, "attrs": { "distance": "20" } },
     { "type": "wokwi-resistor", "id": "r_echo_series", "top": -180, "left": 80, "attrs": { "value": "10000" }, "rotate": 90 },
     { "type": "wokwi-resistor", "id": "r_echo_gnd", "top": -140, "left": 110, "attrs": { "value": "10000" }, "rotate": 90 },
 
