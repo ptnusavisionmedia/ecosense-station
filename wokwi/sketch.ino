@@ -65,15 +65,19 @@ const float DIVIDER_RATIO = 0.5;
 const float ADC_VREF = 3.3;
 const int   ADC_MAX  = 4095;
 
-float PH_CAL_V_AT_HIGH = 2.50;
-float PH_CAL_V_AT_LOW  = 3.00;
+// Kalibrasi diaktifkan untuk simulasi Wokwi, dipetakan ke seluruh rentang
+// putaran potentiometer (0-5V) supaya memutar pot_ph/pot_turb langsung
+// terlihat mengubah nilai pH/turbidity. Di perangkat fisik, nilai-nilai
+// ini HARUS diganti lewat prosedur kalibrasi 2 titik sensor sungguhan.
+float PH_CAL_V_AT_HIGH = 0.00;
+float PH_CAL_V_AT_LOW  = 5.00;
 const float PH_HIGH = 7.00;
 const float PH_LOW  = 4.00;
-bool PH_CALIBRATED = false;
+bool PH_CALIBRATED = true;
 
-float TURB_CAL_V_CLEAR = 2.80;
-float TURB_CAL_V_MAX_NTU = 1.00;
-bool TURB_CALIBRATED = false;
+float TURB_CAL_V_CLEAR = 5.00;
+float TURB_CAL_V_MAX_NTU = 0.00;
+bool TURB_CALIBRATED = true;
 
 volatile uint32_t flowPulseCount = 0;
 float FLOW_PULSES_PER_LITER = 450.0;

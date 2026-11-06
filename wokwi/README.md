@@ -105,6 +105,20 @@ Untuk reproduksi tes ingest-ke-backend-asli, ganti `INGEST_URL` dan
   input simulasi (tidak ada potentiometer/slider yang digerakkan), jadi
   pembacaan ditandai `NAN` → dikirim sebagai `null`/`-1`, sesuai desain
   "pembacaan tidak valid ditandai error, bukan dianggap nilai nol".
+- **Memutar potentiometer `pot_ph`/`pot_turb` awalnya tidak berefek ke
+  nilai pH/turbidity** — ini **bukan bug wiring**, melainkan karena
+  `PH_CALIBRATED`/`TURB_CALIBRATED` sengaja di-set `false` pada draf awal
+  (mewakili kondisi "sensor belum dikalibrasi" di perangkat fisik), yang
+  membuat `readPhValue()`/`readTurbidityNtu()` selalu `return NAN` tanpa
+  pernah membaca pin GPIO-nya sama sekali. **Sudah diperbaiki**: kedua
+  flag di-set `true` dan rentang kalibrasi (`PH_CAL_V_AT_HIGH/LOW`,
+  `TURB_CAL_V_CLEAR`/`TURB_CAL_V_MAX_NTU`) dipetakan ke seluruh rentang
+  putaran pot (0-5V), dikonfirmasi lewat payload yang sebelumnya
+  `"ph":null,"turbidityNtu":null` menjadi `"ph":7,"turbidityNtu":100`
+  setelah fix. Kalau Anda mencoba sendiri dan memutar knob pot di kanvas
+  Wokwi tetap tidak terlihat berubah, pastikan sudah memakai versi
+  `sketch.ino` terbaru dari folder ini (bukan versi lama yang masih
+  `PH_CALIBRATED = false`).
 - **Ingest ke backend asli**: sudah diverifikasi penuh lewat tunnel
   localtunnel — lihat bagian "Ingest ke backend asli (sudah diverifikasi)"
   di atas untuk detail lengkapnya.
