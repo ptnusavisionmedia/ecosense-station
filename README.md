@@ -121,11 +121,15 @@ mengirim data (dianggap offline setelah `DEVICE_OFFLINE_MINUTES` menit).
   `/status`, broadcast transisi alarm), tapi **belum dites dengan token bot
   sungguhan** (tidak ada token Telegram yang tersedia saat development ini).
   Uji dengan token asli sebelum dipakai produksi.
-- **Web dashboard**: HTML/CSS/JS sudah dicek lewat `curl` untuk memastikan
-  ter-serve dengan benar oleh backend, tapi **belum dibuka di browser
-  sungguhan** untuk verifikasi visual (grafik, polling, filter tanggal).
-  Disarankan membuka `http://localhost:3000/` di browser dan mengecek
-  console sebelum dianggap final.
+- **Web dashboard**: sudah dibuka & diverifikasi penuh di browser sungguhan
+  lewat `http://localhost:3000/` (bukan cuma `curl`) — kartu nilai, status
+  online/offline, dan ketiga grafik (Tinggi Air; pH & Turbidity; Suhu &
+  Kelembapan) semuanya render dengan benar setelah backend diisi data
+  contoh. **Penting**: dashboard harus dibuka lewat URL backend
+  (`http://localhost:3000/`), bukan dengan membuka file `web/index.html`
+  langsung dari File Explorer (`file:///...`) — kalau dibuka sebagai file
+  lokal, browser akan memblokir permintaan ke API backend (beda origin)
+  dan menampilkan "Tidak bisa terhubung ke server backend".
 - **Firmware ESP32 WiFi**: sudah dites **penuh** (compile asli, bukan stub)
   di simulator Wokwi lewat [`wokwi/`](wokwi/) — WiFi berhasil konek ke
   jaringan virtual Wokwi, ketiga library pihak ketiga (DHT, LiquidCrystal_I2C,
