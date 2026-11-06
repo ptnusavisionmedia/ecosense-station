@@ -12,7 +12,8 @@ PRD lengkap ada di [`.agents/1-PRD.md`](.agents/1-PRD.md).
 ```
 EcoSense-Station/
 ├── .agents/1-PRD.md        # Product Requirement Document
-├── firmware/esp32-wifi/    # Firmware ESP32 + WiFi (lanjutan sketch Wokwi)
+├── wokwi/                  # Simulasi Wokwi untuk uji WiFi + HTTP POST (lihat wokwi/README.md)
+├── firmware/esp32-wifi/    # Firmware ESP32 + WiFi untuk perangkat fisik
 ├── backend/                # API ingest + Telegram bot + web dashboard server
 │   ├── src/
 │   │   ├── server.js       # Entry point Express
@@ -78,9 +79,11 @@ memakai pin, kalibrasi, dan logika sensor yang sama dengan
 `ecosense-station-wokwi/sketch.ino` — hanya menambah pengiriman data lewat
 WiFi, tanpa mengubah perilaku LCD/alarm lokal.
 
-> Catatan: firmware ini untuk **perangkat ESP32 fisik** (perlu WiFi &
-> internet sungguhan). Belum diuji di Wokwi — simulator Wokwi mendukung
-> WiFi virtual, tapi validasi itu belum dilakukan untuk versi firmware ini.
+> Catatan: firmware ini untuk **perangkat ESP32 fisik**. Logika WiFi + HTTP
+> POST-nya sudah divalidasi di simulator Wokwi lewat project terpisah di
+> [`wokwi/`](wokwi/) (WiFi konek, request terkirim, dapat `HTTP 200`) — lihat
+> [`wokwi/README.md`](wokwi/README.md) untuk detail & cara menjalankannya.
+> Ingin coba dulu tanpa perangkat fisik sama sekali? Mulai dari situ.
 
 ### 3. Telegram bot
 
@@ -123,11 +126,17 @@ mengirim data (dianggap offline setelah `DEVICE_OFFLINE_MINUTES` menit).
   sungguhan** untuk verifikasi visual (grafik, polling, filter tanggal).
   Disarankan membuka `http://localhost:3000/` di browser dan mengecek
   console sebelum dianggap final.
-- **Firmware ESP32 WiFi**: ditulis mengikuti struktur sketch Wokwi yang
-  sudah tervalidasi sebelumnya, tapi **belum di-compile ulang** (baik di
-  Wokwi maupun Arduino IDE) karena menambah library ArduinoJson dan
-  WiFi/HTTPClient yang belum pernah diuji compile bareng sketch ini.
-  Compile dulu sebelum di-flash ke perangkat nyata.
+- **Firmware ESP32 WiFi**: logikanya (WiFi connect, pembentukan payload JSON,
+  HTTP POST) sudah dites langsung di simulator Wokwi lewat [`wokwi/`](wokwi/)
+  — WiFi berhasil konek ke jaringan virtual Wokwi dan request POST ke
+  `httpbin.org` mendapat balasan `HTTP 200`. `WiFi.h`/`HTTPClient.h` juga
+  terkonfirmasi compile bersih (bawaan core ESP32). Yang **belum**
+  terverifikasi: compile dengan ketiga library pihak ketiga (DHT,
+  LiquidCrystal_I2C, ArduinoJson) benar-benar terpasang — di sesi uji coba
+  ini Library Manager Wokwi butuh sign-in yang tidak tersedia, jadi ketiganya
+  sempat distub sementara hanya untuk tes logika. Pasang ketiga library itu
+  dan compile ulang (Arduino IDE atau Wokwi dengan akun) sebelum flash ke
+  perangkat fisik. Detail lengkap ada di [`wokwi/README.md`](wokwi/README.md).
 
 ## Langkah lanjutan yang disarankan
 
