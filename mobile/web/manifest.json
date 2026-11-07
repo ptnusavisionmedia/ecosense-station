@@ -1,0 +1,35 @@
+{
+    "name": "EcoSense Station",
+    "short_name": "EcoSense",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#070B14",
+    "theme_color": "#070B14",
+    "description": "Monitoring tinggi air, pH, turbidity, flow, volume, suhu, dan kelembapan reservoir EcoSense Station secara real-time.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}
