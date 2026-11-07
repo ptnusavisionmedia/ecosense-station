@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Masuk — EcoSense Station</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="auth-body">
+  <main class="auth-shell">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <span class="auth-brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c3.5 4 6 7.6 6 10.8a6 6 0 0 1-12 0c0-3.2 2.5-6.8 6-10.8Z"/></svg>
+        </span>
+        <span class="auth-brand-name">EcoSense Station</span>
+      </div>
+
+      <h1 class="auth-title">Masuk ke dashboard</h1>
+      <p class="auth-subtitle">Pantau kualitas &amp; ketinggian air reservoir secara real-time.</p>
+
+      <form id="loginForm" class="auth-form" novalidate>
+        <label class="field">
+          <span class="field-label">Username</span>
+          <input type="text" id="username" name="username" autocomplete="username" required />
+        </label>
+        <label class="field">
+          <span class="field-label">Password</span>
+          <input type="password" id="password" name="password" autocomplete="current-password" required />
+        </label>
+
+        <div id="loginError" class="form-error hidden" role="alert"></div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="loginSubmit">Masuk</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="js/login.js"></script>
+</body>
+</html>

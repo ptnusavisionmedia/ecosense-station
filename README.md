@@ -21,6 +21,8 @@ EcoSense-Station/
 │   │   ├── config.js       # Ambang alarm (tersimpan di DB)
 │   │   ├── telegram.js     # Bot Telegram (polling)
 │   │   ├── alarms.js       # Deteksi transisi alarm -> notifikasi
+│   │   ├── ingestCore.js   # Logika validasi+simpan reading (dipakai HTTP & MQTT)
+│   │   ├── mqtt.js         # Subscriber MQTT opsional (alternatif /api/ingest)
 │   │   └── routes/         # /api/ingest, /latest, /history, /status, /config
 │   └── .env.example
 └── web/                     # Dashboard statis (HTML/CSS/vanilla JS + Chart.js)
@@ -47,6 +49,10 @@ Isi `.env`:
 - `TELEGRAM_BOT_TOKEN` — dari [@BotFather](https://t.me/BotFather)
   (`/newbot`). Kosongkan kalau belum mau mengaktifkan bot — backend tetap
   jalan tanpa Telegram.
+- `MQTT_BROKER_URL` / `MQTT_TOPIC` — opsional, aktifkan kalau sumber data
+  mengirim lewat MQTT (dipakai simulator Wokwi, lihat
+  [`wokwi/README.md`](wokwi/README.md)) alih-alih HTTP POST langsung.
+  Kosongkan `MQTT_BROKER_URL` kalau tidak dipakai.
 
 Jalankan:
 
@@ -66,7 +72,9 @@ node scripts/simulate-data.js
 ```
 
 Ini hanya untuk demo/pengembangan — matikan (`Ctrl+C`) kalau sudah mau
-pakai data sungguhan dari ESP32/Wokwi.
+pakai data sungguhan dari ESP32/Wokwi. Untuk data sungguhan dari simulator
+Wokwi tanpa perangkat fisik, lihat [`wokwi/README.md`](wokwi/README.md) —
+jalurnya lewat MQTT, bukan `simulate-data.js`.
 
 ### 2. Firmware ESP32
 
@@ -144,19 +152,25 @@ mengirim data (dianggap offline setelah `DEVICE_OFFLINE_MINUTES` menit).
   dan menampilkan "Tidak bisa terhubung ke server backend".
 - **Firmware ESP32 WiFi**: sudah dites **penuh** (compile asli, bukan stub)
   di simulator Wokwi lewat [`wokwi/`](wokwi/) — WiFi berhasil konek ke
-  jaringan virtual Wokwi, ketiga library pihak ketiga (DHT, LiquidCrystal_I2C,
-  ArduinoJson) berhasil dipasang lewat tombol install di dialog error build
-  (tidak perlu sign-in akun Wokwi), dan request POST ke `httpbin.org`
-  mendapat balasan `HTTP 200`. **Ingest ke backend `../backend` yang
-  sesungguhnya juga sudah diverifikasi** lewat tunnel localtunnel — data
-  dari simulator Wokwi terbukti masuk ke database SQLite backend asli
-  (`HTTP status: 201`, dicek langsung lewat query ke database, bukan cuma
-  asumsi dari status code). Catatan penting: Wokwi tidak bisa membuka
-  koneksi HTTPS sama sekali, jadi tunnel yang dipakai harus mengizinkan
-  HTTP polos (ngrok gratis tidak bisa — selalu redirect ke HTTPS; ngrok TCP
-  butuh kartu kredit; localtunnel terbukti bisa). Yang **belum**
-  terverifikasi: compile dengan Arduino IDE di komputer fisik (hanya diuji
-  di Wokwi). Detail lengkap ada di [`wokwi/README.md`](wokwi/README.md).
+  jaringan virtual Wokwi, keempat library pihak ketiga (DHT, LiquidCrystal_I2C,
+  ArduinoJson, PubSubClient) berhasil dipasang, dan data terkirim lewat
+  **MQTT** (bukan HTTP POST — lihat alasannya di
+  [`wokwi/README.md`](wokwi/README.md)) ke broker publik `broker.hivemq.com`.
+  **Ingest ke backend `../backend` yang sesungguhnya juga sudah
+  diverifikasi** lewat subscriber MQTT bawaan backend (`backend/src/mqtt.js`)
+  — data dari simulator Wokwi terbukti masuk ke database SQLite backend asli
+  terus-menerus (dicek langsung lewat log `[mqtt] Reading tersimpan (id=...)`
+  yang id-nya bertambah tiap 5 detik, dan lewat dashboard yang menampilkan
+  status "Online" dengan pH/Turbidity yang ikut berubah saat potentiometer
+  diputar). Catatan penting: Wokwi tidak bisa membuka koneksi HTTPS sama
+  sekali, dan tunnel HTTP gratis (ngrok, localtunnel) terbukti tidak cukup
+  stabil untuk jalur ini (lihat detail percobaan di
+  [`wokwi/README.md`](wokwi/README.md)) — MQTT lewat broker publik (plain
+  TCP, tanpa TLS) dipakai sebagai gantinya karena baik Wokwi maupun backend
+  sama-sama cuma perlu koneksi **keluar**, jadi tidak perlu tunnel sama
+  sekali. Yang **belum** terverifikasi: compile dengan Arduino IDE di
+  komputer fisik (hanya diuji di Wokwi). Detail lengkap ada di
+  [`wokwi/README.md`](wokwi/README.md).
 
 ## Langkah lanjutan yang disarankan
 
