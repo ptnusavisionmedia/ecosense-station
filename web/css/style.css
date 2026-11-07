@@ -421,9 +421,11 @@ select:disabled {
   display: flex;
   flex-direction: column;
   padding: var(--space-5) var(--space-3);
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
   height: 100vh;
+  z-index: 10;
 }
 
 .sidebar-brand {
@@ -538,6 +540,7 @@ select:disabled {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  margin-left: var(--sidebar-w);
 }
 
 .topbar {
@@ -737,7 +740,9 @@ select:disabled {
 }
 
 .panel-narrow {
+  width: 100%;
   max-width: 560px;
+  margin-inline: auto;
 }
 
 .panel-header {
@@ -943,8 +948,11 @@ select:disabled {
 /* ===================== Responsive ===================== */
 
 @media (max-width: 860px) {
+  .app-main {
+    margin-left: 0;
+  }
+
   .sidebar {
-    position: fixed;
     inset: 0 auto 0 0;
     z-index: 20;
     transform: translateX(-100%);
