@@ -3,116 +3,286 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EcoSense Station — Dashboard Monitoring</title>
+  <title>EcoSense Station — Dashboard</title>
   <link rel="stylesheet" href="css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
-<body>
-  <div class="liquid-blobs" aria-hidden="true">
-    <span class="blob b1"></span>
-    <span class="blob b2"></span>
-    <span class="blob b3"></span>
-    <span class="blob b4"></span>
+<body class="app-body">
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c3.5 4 6 7.6 6 10.8a6 6 0 0 1-12 0c0-3.2 2.5-6.8 6-10.8Z"/></svg>
+        </span>
+        <span class="brand-name">EcoSense Station</span>
+      </div>
+
+      <nav class="sidebar-nav" aria-label="Navigasi utama">
+        <a class="nav-item" href="#home" data-view="home" data-icon="home">Home</a>
+        <a class="nav-item" href="#monitoring" data-view="monitoring" data-icon="activity">Monitoring</a>
+        <a class="nav-item" href="#data" data-view="data" data-icon="database">Data</a>
+        <a class="nav-item" href="#peringatan" data-view="peringatan" data-icon="bell">Peringatan</a>
+        <a class="nav-item" href="#account" data-view="account" data-icon="users">Account</a>
+        <a class="nav-item" href="#settings" data-view="settings" data-icon="settings">Settings</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="session-card">
+          <div class="session-avatar" id="sessionAvatar">—</div>
+          <div class="session-meta">
+            <span class="session-name" id="sessionName">—</span>
+            <span class="session-role" id="sessionRole">—</span>
+          </div>
+        </div>
+        <button class="nav-item nav-item--button" id="logoutBtn" data-icon="logout">Keluar</button>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="topbar">
+        <button class="icon-btn sidebar-toggle" id="sidebarToggle" aria-label="Buka navigasi"></button>
+        <h1 class="topbar-title" id="viewTitle">Home</h1>
+        <div class="device-status" id="deviceStatus">
+          <span class="dot" id="statusDot"></span>
+          <span id="statusText">Menghubungkan...</span>
+        </div>
+      </header>
+
+      <main class="content">
+        <div id="connError" class="banner banner-error hidden">
+          Tidak bisa terhubung ke server backend. Periksa apakah backend sedang berjalan.
+        </div>
+        <div id="alarmBanner" class="banner banner-alarm hidden"></div>
+
+        <!-- ===== HOME ===== -->
+        <section class="view" data-view="home">
+          <p class="view-subtitle">Ringkasan kondisi reservoir saat ini.</p>
+
+          <section class="cards" id="cardsHome"></section>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Tren sensor (24 jam terakhir)</h2>
+            </div>
+            <div class="chart-box">
+              <canvas id="chartOverview" height="110"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== MONITORING ===== -->
+        <section class="view" data-view="monitoring">
+          <p class="view-subtitle">Data langsung dari perangkat, diperbarui setiap 10 detik.</p>
+
+          <div class="panel panel-status">
+            <div>
+              <span class="panel-status-label">Status perangkat</span>
+              <div class="panel-status-value" id="monitoringDeviceStatus">—</div>
+            </div>
+            <div>
+              <span class="panel-status-label">Data terakhir</span>
+              <div class="panel-status-value" id="monitoringLastSeen">—</div>
+            </div>
+          </div>
+
+          <section class="cards" id="cardsMonitoring"></section>
+
+          <div class="panel">
+            <div class="panel-header"><h2>Semua nilai mentah</h2></div>
+            <div class="table-wrap">
+              <table class="data-table" id="rawTable">
+                <thead>
+                  <tr><th>Field</th><th>Nilai</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== DATA ===== -->
+        <section class="view" data-view="data">
+          <p class="view-subtitle">Data historis harian/mingguan dan log peringatan yang pernah terjadi.</p>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Rentang waktu</h2>
+              <form id="filterForm" class="filter-form">
+                <label class="field field-inline">
+                  <span class="field-label">Dari</span>
+                  <input type="date" id="fromDate" />
+                </label>
+                <label class="field field-inline">
+                  <span class="field-label">Sampai</span>
+                  <input type="date" id="toDate" />
+                </label>
+                <div class="filter-presets">
+                  <button type="button" class="chip" data-range="1">24 jam</button>
+                  <button type="button" class="chip" data-range="7">7 hari</button>
+                  <button type="button" class="chip" data-range="30">30 hari</button>
+                </div>
+                <button type="submit" class="btn btn-primary">Terapkan</button>
+              </form>
+            </div>
+            <div id="filterError" class="form-error hidden"></div>
+            <div class="stat-row">
+              <div class="stat-chip">
+                <span class="stat-chip-label">Total pemakaian air periode ini</span>
+                <span class="stat-chip-value" id="volumeSummaryValue">—</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-grid">
+            <div class="panel"><div class="panel-header"><h2>Tinggi air (cm)</h2></div><div class="chart-box"><canvas id="chartWater"></canvas></div></div>
+            <div class="panel"><div class="panel-header"><h2>pH &amp; turbidity</h2></div><div class="chart-box"><canvas id="chartQuality"></canvas></div></div>
+            <div class="panel"><div class="panel-header"><h2>Suhu &amp; kelembapan</h2></div><div class="chart-box"><canvas id="chartClimate"></canvas></div></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header"><h2>Log peringatan pada periode ini</h2></div>
+            <div class="table-wrap">
+              <table class="data-table" id="alertLogTable">
+                <thead>
+                  <tr><th>Waktu</th><th>Jenis</th><th>Status</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+              <p class="empty-state hidden" id="alertLogEmpty">Tidak ada peringatan pada periode ini.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== PERINGATAN ===== -->
+        <section class="view" data-view="peringatan">
+          <p class="view-subtitle">Atur ambang batas yang memicu alarm &amp; notifikasi Telegram.</p>
+
+          <div class="panel panel-narrow">
+            <form id="thresholdForm" class="form-grid">
+              <label class="field">
+                <span class="field-label">Ketinggian air minimum (cm)</span>
+                <input type="number" step="0.1" id="thLowWaterCm" required />
+                <span class="field-hint">Alarm "air rendah" aktif di bawah nilai ini.</span>
+              </label>
+              <label class="field">
+                <span class="field-label">pH minimum</span>
+                <input type="number" step="0.01" id="thPhMin" required />
+              </label>
+              <label class="field">
+                <span class="field-label">pH maksimum</span>
+                <input type="number" step="0.01" id="thPhMax" required />
+                <span class="field-hint">Alarm pH aktif di luar rentang min–max.</span>
+              </label>
+              <label class="field">
+                <span class="field-label">Turbidity maksimum (NTU)</span>
+                <input type="number" step="0.1" id="thTurbidityMaxNtu" required />
+                <span class="field-hint">Alarm kekeruhan aktif di atas nilai ini.</span>
+              </label>
+
+              <div id="thresholdMsg" class="form-note hidden"></div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="thresholdSubmit">Simpan ambang batas</button>
+              </div>
+              <p class="form-note" id="thresholdReadonlyNote">Hanya admin yang dapat mengubah ambang batas.</p>
+            </form>
+          </div>
+        </section>
+
+        <!-- ===== ACCOUNT ===== -->
+        <section class="view" data-view="account">
+          <p class="view-subtitle">Kelola akun yang dapat mengakses dashboard ini.</p>
+
+          <div class="panel panel-narrow">
+            <div class="panel-header"><h2>Ganti password saya</h2></div>
+            <form id="selfPasswordForm" class="form-grid">
+              <label class="field">
+                <span class="field-label">Password baru</span>
+                <input type="password" id="selfNewPassword" minlength="6" required />
+                <span class="field-hint">Minimal 6 karakter.</span>
+              </label>
+              <div id="selfPasswordMsg" class="form-note hidden"></div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-secondary">Ganti password</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="panel" id="userManagementPanel">
+            <div class="panel-header">
+              <h2>Pengguna dashboard</h2>
+              <button class="btn btn-primary btn-sm" id="addUserBtn" data-icon="plus">Tambah pengguna</button>
+            </div>
+
+            <form id="addUserForm" class="form-grid form-grid--inline hidden">
+              <label class="field">
+                <span class="field-label">Username</span>
+                <input type="text" id="newUsername" required />
+              </label>
+              <label class="field">
+                <span class="field-label">Password</span>
+                <input type="password" id="newUserPassword" minlength="6" required />
+              </label>
+              <label class="field">
+                <span class="field-label">Role</span>
+                <select id="newUserRole">
+                  <option value="viewer">Viewer</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </label>
+              <div id="addUserMsg" class="form-note hidden"></div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-sm">Simpan</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="cancelAddUser">Batal</button>
+              </div>
+            </form>
+
+            <div class="table-wrap">
+              <table class="data-table" id="usersTable">
+                <thead>
+                  <tr><th>Username</th><th>Role</th><th>Dibuat</th><th></th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== SETTINGS ===== -->
+        <section class="view" data-view="settings">
+          <p class="view-subtitle">Preferensi tampilan dan info perangkat untuk dashboard ini.</p>
+
+          <div class="panel panel-narrow">
+            <div class="panel-header"><h2>Preferensi polling</h2></div>
+            <form id="settingsForm" class="form-grid">
+              <label class="field">
+                <span class="field-label">Interval refresh data</span>
+                <select id="pollInterval">
+                  <option value="5000">5 detik</option>
+                  <option value="10000">10 detik</option>
+                  <option value="30000">30 detik</option>
+                  <option value="60000">60 detik</option>
+                </select>
+              </label>
+              <div id="settingsMsg" class="form-note hidden"></div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Simpan preferensi</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="panel panel-narrow">
+            <div class="panel-header"><h2>Info perangkat</h2></div>
+            <dl class="info-list">
+              <div><dt>Device ID</dt><dd id="infoDeviceId">—</dd></div>
+              <div><dt>Backend</dt><dd>Node.js + SQLite (lokal)</dd></div>
+              <div><dt>Notifikasi</dt><dd>Bot Telegram EcoSense Station</dd></div>
+            </dl>
+          </div>
+        </section>
+      </main>
+    </div>
   </div>
-  <div class="grain" aria-hidden="true"></div>
 
-  <header class="topbar glass">
-    <h1><span class="logo-wave">🌊</span> EcoSense Station</h1>
-    <div class="device-status" id="deviceStatus">
-      <span class="dot" id="statusDot"></span>
-      <span id="statusText">Menghubungkan...</span>
-    </div>
-  </header>
-
-  <main>
-    <div id="alarmBanner" class="alarm-banner hidden"></div>
-    <div id="connError" class="conn-error hidden">
-      Tidak bisa terhubung ke server backend. Periksa apakah backend sedang berjalan.
-    </div>
-
-    <section class="cards" id="cards">
-      <div class="card glass" data-key="waterHeightCm" data-icon="💧" data-accent="water">
-        <div class="card-top">
-          <span class="card-icon">💧</span>
-          <div class="card-tank"><div class="card-tank-fill"></div></div>
-        </div>
-        <div class="card-label">Tinggi Air</div>
-        <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">cm</span></div>
-      </div>
-      <div class="card glass" data-key="ph" data-icon="🧪" data-accent="ph">
-        <div class="card-top"><span class="card-icon">🧪</span></div>
-        <div class="card-label">pH</div>
-        <div class="card-value-row"><span class="card-value">—</span><span class="card-unit"></span></div>
-      </div>
-      <div class="card glass" data-key="turbidityNtu" data-icon="🌫️" data-accent="turb">
-        <div class="card-top"><span class="card-icon">🌫️</span></div>
-        <div class="card-label">Turbidity</div>
-        <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">NTU</span></div>
-      </div>
-      <div class="card glass" data-key="flowLpm" data-icon="🚿" data-accent="flow">
-        <div class="card-top"><span class="card-icon">🚿</span></div>
-        <div class="card-label">Flow</div>
-        <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">L/menit</span></div>
-      </div>
-      <div class="card glass" data-key="volumeL" data-icon="🪣" data-accent="volume">
-        <div class="card-top"><span class="card-icon">🪣</span></div>
-        <div class="card-label">Volume Kumulatif</div>
-        <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">L</span></div>
-      </div>
-      <div class="card glass" data-key="tempC" data-icon="🌡️" data-accent="temp">
-        <div class="card-top"><span class="card-icon">🌡️</span></div>
-        <div class="card-label">Suhu</div>
-        <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">°C</span></div>
-      </div>
-      <div class="card glass" data-key="rh" data-icon="☁️" data-accent="rh">
-        <div class="card-top"><span class="card-icon">☁️</span></div>
-        <div class="card-label">Kelembapan</div>
-        <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">%</span></div>
-      </div>
-    </section>
-
-    <section class="history">
-      <div class="history-header">
-        <h2>Histori & Tren</h2>
-        <form id="filterForm" class="filter-form">
-          <label>
-            Dari
-            <input type="date" id="fromDate" />
-          </label>
-          <label>
-            Sampai
-            <input type="date" id="toDate" />
-          </label>
-          <button type="submit">Terapkan</button>
-        </form>
-      </div>
-      <div id="filterError" class="filter-error hidden"></div>
-
-      <div class="volume-summary glass" id="volumeSummary">
-        Total pemakaian air periode ini: <strong id="volumeSummaryValue">—</strong>
-      </div>
-
-      <div class="chart-grid">
-        <div class="chart-box glass">
-          <h3>Tinggi Air (cm)</h3>
-          <canvas id="chartWater"></canvas>
-        </div>
-        <div class="chart-box glass">
-          <h3>pH & Turbidity</h3>
-          <canvas id="chartQuality"></canvas>
-        </div>
-        <div class="chart-box glass">
-          <h3>Suhu (°C) & Kelembapan (%)</h3>
-          <canvas id="chartClimate"></canvas>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer>
-    <p>EcoSense Station — data diperbarui otomatis setiap 10 detik.</p>
-  </footer>
-
-  <script src="js/app.js"></script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
