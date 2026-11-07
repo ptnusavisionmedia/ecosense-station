@@ -8,11 +8,15 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <div class="aurora" aria-hidden="true">
-    <span></span><span></span><span></span>
+  <div class="liquid-blobs" aria-hidden="true">
+    <span class="blob b1"></span>
+    <span class="blob b2"></span>
+    <span class="blob b3"></span>
+    <span class="blob b4"></span>
   </div>
+  <div class="grain" aria-hidden="true"></div>
 
-  <header class="topbar">
+  <header class="topbar glass">
     <h1><span class="logo-wave">🌊</span> EcoSense Station</h1>
     <div class="device-status" id="deviceStatus">
       <span class="dot" id="statusDot"></span>
@@ -27,7 +31,7 @@
     </div>
 
     <section class="cards" id="cards">
-      <div class="card" data-key="waterHeightCm" data-icon="💧" data-accent="water">
+      <div class="card glass" data-key="waterHeightCm" data-icon="💧" data-accent="water">
         <div class="card-top">
           <span class="card-icon">💧</span>
           <div class="card-tank"><div class="card-tank-fill"></div></div>
@@ -35,32 +39,32 @@
         <div class="card-label">Tinggi Air</div>
         <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">cm</span></div>
       </div>
-      <div class="card" data-key="ph" data-icon="🧪" data-accent="ph">
+      <div class="card glass" data-key="ph" data-icon="🧪" data-accent="ph">
         <div class="card-top"><span class="card-icon">🧪</span></div>
         <div class="card-label">pH</div>
         <div class="card-value-row"><span class="card-value">—</span><span class="card-unit"></span></div>
       </div>
-      <div class="card" data-key="turbidityNtu" data-icon="🌫️" data-accent="turb">
+      <div class="card glass" data-key="turbidityNtu" data-icon="🌫️" data-accent="turb">
         <div class="card-top"><span class="card-icon">🌫️</span></div>
         <div class="card-label">Turbidity</div>
         <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">NTU</span></div>
       </div>
-      <div class="card" data-key="flowLpm" data-icon="🚿" data-accent="flow">
+      <div class="card glass" data-key="flowLpm" data-icon="🚿" data-accent="flow">
         <div class="card-top"><span class="card-icon">🚿</span></div>
         <div class="card-label">Flow</div>
         <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">L/menit</span></div>
       </div>
-      <div class="card" data-key="volumeL" data-icon="🪣" data-accent="volume">
+      <div class="card glass" data-key="volumeL" data-icon="🪣" data-accent="volume">
         <div class="card-top"><span class="card-icon">🪣</span></div>
         <div class="card-label">Volume Kumulatif</div>
         <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">L</span></div>
       </div>
-      <div class="card" data-key="tempC" data-icon="🌡️" data-accent="temp">
+      <div class="card glass" data-key="tempC" data-icon="🌡️" data-accent="temp">
         <div class="card-top"><span class="card-icon">🌡️</span></div>
         <div class="card-label">Suhu</div>
         <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">°C</span></div>
       </div>
-      <div class="card" data-key="rh" data-icon="☁️" data-accent="rh">
+      <div class="card glass" data-key="rh" data-icon="☁️" data-accent="rh">
         <div class="card-top"><span class="card-icon">☁️</span></div>
         <div class="card-label">Kelembapan</div>
         <div class="card-value-row"><span class="card-value">—</span><span class="card-unit">%</span></div>
@@ -84,20 +88,20 @@
       </div>
       <div id="filterError" class="filter-error hidden"></div>
 
-      <div class="volume-summary" id="volumeSummary">
+      <div class="volume-summary glass" id="volumeSummary">
         Total pemakaian air periode ini: <strong id="volumeSummaryValue">—</strong>
       </div>
 
       <div class="chart-grid">
-        <div class="chart-box">
+        <div class="chart-box glass">
           <h3>Tinggi Air (cm)</h3>
           <canvas id="chartWater"></canvas>
         </div>
-        <div class="chart-box">
+        <div class="chart-box glass">
           <h3>pH & Turbidity</h3>
           <canvas id="chartQuality"></canvas>
         </div>
-        <div class="chart-box">
+        <div class="chart-box glass">
           <h3>Suhu (°C) & Kelembapan (%)</h3>
           <canvas id="chartClimate"></canvas>
         </div>
