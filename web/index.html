@@ -105,32 +105,29 @@
           <p class="view-subtitle">Data historis harian/mingguan dan log peringatan yang pernah terjadi.</p>
 
           <div class="panel">
-            <div class="panel-header">
-              <h2>Rentang waktu</h2>
-              <form id="filterForm" class="filter-form">
-                <label class="field field-inline">
-                  <span class="field-label">Dari</span>
-                  <input type="date" id="fromDate" />
-                </label>
-                <label class="field field-inline">
-                  <span class="field-label">Sampai</span>
-                  <input type="date" id="toDate" />
-                </label>
-                <div class="filter-presets">
-                  <button type="button" class="chip" data-range="1">24 jam</button>
-                  <button type="button" class="chip" data-range="7">7 hari</button>
-                  <button type="button" class="chip" data-range="30">30 hari</button>
-                </div>
-                <button type="submit" class="btn btn-primary">Terapkan</button>
-              </form>
-            </div>
-            <div id="filterError" class="form-error hidden"></div>
-            <div class="stat-row">
-              <div class="stat-chip">
-                <span class="stat-chip-label">Total pemakaian air periode ini</span>
-                <span class="stat-chip-value" id="volumeSummaryValue">—</span>
+            <div class="panel-header"><h2>Rentang waktu</h2></div>
+            <form id="filterForm" class="filter-form">
+              <label class="field field-inline">
+                <span class="field-label">Dari</span>
+                <input type="date" id="fromDate" />
+              </label>
+              <label class="field field-inline">
+                <span class="field-label">Sampai</span>
+                <input type="date" id="toDate" />
+              </label>
+              <div class="filter-presets">
+                <button type="button" class="chip" data-range="1">24 jam</button>
+                <button type="button" class="chip" data-range="7">7 hari</button>
+                <button type="button" class="chip" data-range="30">30 hari</button>
               </div>
-            </div>
+              <button type="submit" class="btn btn-primary">Terapkan</button>
+            </form>
+            <div id="filterError" class="form-error hidden"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header"><h2>Ringkasan periode ini</h2></div>
+            <div class="stat-row" id="periodStats"></div>
           </div>
 
           <div class="chart-grid">

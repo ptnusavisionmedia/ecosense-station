@@ -771,7 +771,7 @@ select:disabled {
 .filter-form {
   display: flex;
   align-items: flex-end;
-  gap: var(--space-3);
+  gap: var(--space-4);
   flex-wrap: wrap;
 }
 
@@ -782,12 +782,13 @@ select:disabled {
 .filter-presets {
   display: flex;
   gap: var(--space-2);
+  padding-bottom: 1px;
 }
 
 .stat-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: var(--space-3);
-  flex-wrap: wrap;
 }
 
 .stat-chip {
@@ -805,8 +806,20 @@ select:disabled {
 }
 
 .stat-chip-value {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-chip-value .stat-chip-unit {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.stat-chip--accent .stat-chip-value {
   color: var(--brand-900);
 }
 

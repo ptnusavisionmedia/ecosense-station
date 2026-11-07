@@ -361,23 +361,54 @@ function renderDataCharts(readings) {
   });
 }
 
-function renderVolumeSummary(readings) {
-  const volumes = readings.map((r) => r.volumeL).filter((v) => v !== null && v !== undefined);
-  const el = document.getElementById("volumeSummaryValue");
-  if (volumes.length < 2) {
-    el.textContent = "data belum cukup";
-    return;
-  }
-  el.textContent = `${fmt(volumes[volumes.length - 1] - volumes[0], 1)} L`;
+function numericValues(readings, key) {
+  return readings.map((r) => r[key]).filter((v) => v !== null && v !== undefined && !Number.isNaN(Number(v))).map(Number);
 }
 
-function renderAlertLog(readings) {
-  const tbody = document.querySelector("#alertLogTable tbody");
-  const empty = document.getElementById("alertLogEmpty");
+function average(values) {
+  if (values.length === 0) return null;
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
+function statChip({ label, value, unit, accent }) {
+  return `
+    <div class="stat-chip${accent ? " stat-chip--accent" : ""}">
+      <span class="stat-chip-label">${label}</span>
+      <span class="stat-chip-value">${value}${unit ? `<span class="stat-chip-unit">${unit}</span>` : ""}</span>
+    </div>`;
+}
+
+function renderPeriodStats(readings) {
+  const container = document.getElementById("periodStats");
+  const volumes = numericValues(readings, "volumeL");
+  const totalVolume = volumes.length >= 2 ? volumes[volumes.length - 1] - volumes[0] : null;
+
+  const water = numericValues(readings, "waterHeightCm");
+  const ph = numericValues(readings, "ph");
+  const turb = numericValues(readings, "turbidityNtu");
+  const temp = numericValues(readings, "tempC");
+  const rh = numericValues(readings, "rh");
+  const alertCount = countAlertEvents(readings).filter((e) => e.active).length;
+
+  const chips = [
+    statChip({ label: "Total pemakaian air", value: totalVolume === null ? "—" : fmt(totalVolume, 1), unit: "L", accent: true }),
+    statChip({ label: "Rata-rata tinggi air", value: fmt(average(water), 1), unit: "cm" }),
+    statChip({ label: "Tinggi air min–maks", value: water.length ? `${fmt(Math.min(...water), 0)}–${fmt(Math.max(...water), 0)}` : "—", unit: "cm" }),
+    statChip({ label: "Rata-rata pH", value: fmt(average(ph), 2) }),
+    statChip({ label: "Rata-rata turbidity", value: fmt(average(turb), 1), unit: "NTU" }),
+    statChip({ label: "Rata-rata suhu", value: fmt(average(temp), 1), unit: "°C" }),
+    statChip({ label: "Rata-rata kelembapan", value: fmt(average(rh), 1), unit: "%" }),
+    statChip({ label: "Peringatan aktif", value: String(alertCount) }),
+    statChip({ label: "Jumlah data", value: String(readings.length) }),
+  ];
+
+  container.innerHTML = chips.join("");
+}
+
+function countAlertEvents(readings) {
   const alarmKeys = ["lowWaterAlarm", "phAlarm", "turbAlarm"];
   const events = [];
   const prevState = { lowWaterAlarm: 0, phAlarm: 0, turbAlarm: 0 };
-
   for (const r of readings) {
     for (const key of alarmKeys) {
       const value = r[key] ? 1 : 0;
@@ -387,7 +418,13 @@ function renderAlertLog(readings) {
       }
     }
   }
-  events.reverse();
+  return events;
+}
+
+function renderAlertLog(readings) {
+  const tbody = document.querySelector("#alertLogTable tbody");
+  const empty = document.getElementById("alertLogEmpty");
+  const events = countAlertEvents(readings).reverse();
 
   if (events.length === 0) {
     tbody.innerHTML = "";
@@ -414,7 +451,7 @@ async function loadHistory(fromMs, toMs) {
     const data = await fetchJson(`/api/history?${query.toString()}`);
     renderDataCharts(data.readings);
     renderOverviewChart(data.readings.slice(-200));
-    renderVolumeSummary(data.readings);
+    renderPeriodStats(data.readings);
     renderAlertLog(data.readings);
     filterError.classList.add("hidden");
   } catch (err) {
