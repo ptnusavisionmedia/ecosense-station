@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getThresholds, setThresholds } from "../config.js";
+import { currentUser } from "../auth.js";
 
 export function createConfigRouter({ adminApiKey }) {
   const router = Router();
@@ -10,8 +11,11 @@ export function createConfigRouter({ adminApiKey }) {
 
   router.put("/config/thresholds", (req, res) => {
     const apiKey = req.header("x-api-key");
-    if (!adminApiKey || apiKey !== adminApiKey) {
-      return res.status(401).json({ error: "API key admin tidak valid." });
+    const apiKeyValid = Boolean(adminApiKey) && apiKey === adminApiKey;
+    const sessionUser = currentUser(req);
+    const sessionValid = sessionUser && sessionUser.role === "admin";
+    if (!apiKeyValid && !sessionValid) {
+      return res.status(401).json({ error: "Butuh login admin atau API key admin." });
     }
 
     const body = req.body ?? {};

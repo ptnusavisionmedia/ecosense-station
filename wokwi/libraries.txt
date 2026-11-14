@@ -1,4 +1,5 @@
 DHT sensor library
-Adafruit Unified Sensor
 LiquidCrystal_I2C
 ArduinoJson
+PubSubClient
+DHT sensor library for ESPx

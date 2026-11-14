@@ -1,19 +1,20 @@
 /*
-  EcoSense Station — Wokwi simulation build (WiFi + HTTP POST)
+  EcoSense Station — Wokwi simulation build (WiFi + MQTT)
 
   Versi untuk SIMULASI di wokwi.com saja. Berbeda dari
   ../firmware/esp32-wifi/esp32-wifi.ino (yang untuk perangkat ESP32 fisik):
     - WIFI_SSID diset ke "Wokwi-GUEST" / password kosong — ini jaringan
       WiFi virtual bawaan Wokwi yang punya akses internet sungguhan dari
       simulator (lihat https://docs.wokwi.com/guides/esp32-wifi).
-    - INGEST_URL diarahkan ke https://httpbin.org/post (endpoint publik yang
-      sekadar meng-echo balik request yang diterima) — dipakai untuk
-      MEMVALIDASI alur WiFi connect + HTTP POST JSON-nya, BUKAN backend
-      sungguhan. Backend asli di ../backend berjalan di localhost komputer
-      Anda sendiri, yang TIDAK bisa dijangkau dari simulator Wokwi (jalan di
-      cloud, bukan di komputer Anda) — perlu tunnel (ngrok dsb.) atau
-      backend yang sudah online publik kalau mau tes ingest sungguhan dari
-      Wokwi.
+    - Data dikirim lewat MQTT (bukan HTTP POST) ke broker publik
+      broker.hivemq.com:1883 (plain TCP, tanpa TLS — Wokwi TIDAK bisa
+      membuka koneksi HTTPS/TLS sama sekali, lihat wokwi/README.md).
+      Backend ../backend berlangganan topic yang sama lewat
+      backend/src/mqtt.js, jadi TIDAK perlu tunnel (ngrok/localtunnel) sama
+      sekali — baik simulator maupun backend cuma membuat koneksi KELUAR ke
+      broker. MQTT_TOPIC di bawah pakai namespace demo bersama; untuk
+      pemakaian sungguhan ganti ke topic unik (lihat MQTT_TOPIC di
+      backend/.env) supaya tidak bentrok dengan pengguna lain broker publik.
 
   Sensor pengganti (sama seperti ../../ecosense-station-wokwi di repo
   Aplikasi-Pendeteksi-Buronan): HC-SR04 (pengganti JSN-SR04T), dua
@@ -21,26 +22,64 @@
   YF-S201). Buzzer digerakkan langsung dari GPIO (Wokwi versi gratis tidak
   punya part transistor).
 
-  Library Arduino: DHT sensor library (Adafruit), Adafruit Unified Sensor,
-  LiquidCrystal_I2C, ArduinoJson (Benoit Blanchon).
+  Board di diagram.json: wokwi-esp32-devkit-v1 (BUKAN board-esp32-devkit-c-v4)
+  -- board ini satu-satunya yang mensimulasikan chip DHT22 & HC-SR04 secara
+  nyata (sinyal bit-banged beneran disimulasikan, bukan selalu NaN), sehingga
+  suhu/kelembapan/jarak bisa dikontrol langsung lewat slider/knob part itu
+  sendiri, persis seperti project referensi resmi Wokwi
+  (https://wokwi.com/projects/new/esp32). GPIO4 KHUSUS TIDAK BISA dipakai
+  untuk DHT22 di board ini -- sinyal bit-banged-nya selalu timeout walau
+  wiring benar (terbukti lewat project official Wokwi sendiri yang juga
+  gagal di GPIO4 tapi sukses di GPIO15); karena itu DHT22 dipindah ke GPIO15.
+  SATU SYARAT PENTING: board ini
+  memakai alias pin "D<n>" untuk semua pin digital (esp:D15, esp:D5, esp:D18,
+  esp:D19, esp:D21, esp:D22, esp:D23, esp:D27) -- TANPA prefix "D" (esp:4 dst)
+  wire-nya terlihat tersambung di kanvas tapi SEBENARNYA tidak terhubung
+  secara elektrik (bug penamaan pin khusus board ini, kebalikan dari
+  board-esp32-devkit-c-v4 yang justru butuh TANPA "D"). Pin ADC-only
+  (GPIO32-39, dipakai pot_ph/pot_turb di esp:34/esp:35) TIDAK pakai alias "D".
+  Nomor GPIO di firmware (angka di #define PIN_xxx di bawah) tetap sama
+  persis, prefix "D" itu cuma label routing di diagram.json.
+
+  Library Arduino: "DHT sensor library for ESPx" (beegee_tokyo -- WAJIB, pakai
+  #include "DHTesp.h" + class DHTesp; library DHT.h generik dari Adafruit
+  TIDAK reliable, dan DHTlib/Rob Tillaart gagal compile untuk ESP32 sama
+  sekali karena library itu AVR-only), LiquidCrystal_I2C, ArduinoJson
+  (Benoit Blanchon), PubSubClient (Nick O'Leary).
+
+  CATATAN SIMULASI: potentiometer pH/turbidity kadang butuh reload bersih +
+  klik ulang tombol Play supaya attrs/posisi knob ikut terbaca firmware saat
+  boot pertama -- ini keterbatasan sesi simulator Wokwi, BUKAN bug wiring.
+  Untuk sensor flow (pushbutton, pengganti pulsa YF-S201), nilainya HANYA naik
+  kalau tombolnya benar-benar diklik di kanvas (setiap klik = satu pulsa);
+  supaya demo tidak perlu klik berkali-kali, pakai override Serial "F<angka>"
+  (lihat handleSerialOverrideCommands) yang otomatis mengakumulasi volume
+  seolah air mengalir terus.
 */
 
 #include <WiFi.h>
-#include <HTTPClient.h>
+#include <PubSubClient.h>
 #include <ArduinoJson.h>
-#include <DHT.h>
+#include "DHTesp.h"
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-// ---------- WiFi & server (khusus simulasi Wokwi) ----------
+// ---------- WiFi & MQTT (khusus simulasi Wokwi) ----------
 const char* WIFI_SSID = "Wokwi-GUEST";
 const char* WIFI_PASSWORD = "";
-const char* INGEST_URL = "http://httpbin.org/post"; // endpoint uji publik, bukan backend asli
-const char* DEVICE_API_KEY = "wokwi-sim-key";
-const char* DEVICE_ID = "ecosense-01-sim";
+const char* MQTT_BROKER = "broker.hivemq.com";
+const int   MQTT_PORT = 1883;
+const char* MQTT_TOPIC = "ecosense-station-24b6a0f8/ingest"; // samakan dengan MQTT_TOPIC di backend/.env
+const char* DEVICE_API_KEY = "wokwi-sim-key"; // dikirim di field "apiKey" tiap payload (MQTT tidak punya header)
+const char* DEVICE_ID = "ecosense-01"; // samakan dengan DEFAULT_DEVICE_ID di backend/src/config.js
 
 const unsigned long WIFI_RECONNECT_INTERVAL_MS = 15000;
+const unsigned long MQTT_RECONNECT_INTERVAL_MS = 5000;
 const unsigned long SEND_INTERVAL_MS = 5000;
+
+WiFiClient espClient;
+PubSubClient mqttClient(espClient);
+unsigned long lastMqttAttempt = 0;
 
 // ---------- Pin map (sama dengan diagram.json di folder ini) ----------
 #define PIN_TRIG      5
@@ -48,17 +87,21 @@ const unsigned long SEND_INTERVAL_MS = 5000;
 #define PIN_PH_PO     34
 #define PIN_TURB_OUT  35
 #define PIN_FLOW      27
-#define PIN_DHT       4
+#define PIN_DHT       15
 #define PIN_BUZZER    19
 #define PIN_LED       23
 
-#define DHT_TYPE      DHT22
 #define LCD_ADDR      0x27
 #define LCD_COLS      16
 #define LCD_ROWS      2
 
 // ---------- Kalibrasi & ambang: placeholder, cukup untuk simulasi ----------
-float RESERVOIR_HEIGHT_CM = 100.0;
+// RESERVOIR_HEIGHT_CM dinaikkan ke 400 (jangkauan maksimum HC-SR04) karena
+// sensor ultrasonic simulasi Wokwi terbaca di kisaran ~300cm, bukan nilai
+// "distance" di diagram.json — kalau RESERVOIR_HEIGHT_CM tetap 100, hasil
+// (100 - ~300) selalu negatif lalu di-clamp ke 0, sehingga waterHeightCm
+// macet di 0 terus. Di perangkat fisik, ganti sesuai tinggi reservoir asli.
+float RESERVOIR_HEIGHT_CM = 400.0;
 float LOW_WATER_THRESHOLD_CM = 15.0;
 
 const float DIVIDER_RATIO = 0.5;
@@ -85,7 +128,7 @@ unsigned long flowWindowStart = 0;
 float flowRateLpm = 0.0;
 float flowVolumeLiters = 0.0;
 
-DHT dht(PIN_DHT, DHT_TYPE);
+DHTesp dhtSensor;
 LiquidCrystal_I2C lcd(LCD_ADDR, LCD_COLS, LCD_ROWS);
 
 float dhtTemperature = NAN;
@@ -103,6 +146,58 @@ bool turbAlarm = false;
 
 unsigned long lastSendAttempt = 0;
 unsigned long lastWifiAttempt = 0;
+
+// ---------- Override manual lewat Serial Monitor (khusus simulasi Wokwi) ----------
+// Wokwi tidak membawa nilai diagram.json/slider part (distance, posisi
+// potentiometer) ke sinyal yang benar-benar dibaca firmware (pulseIn()/
+// analogRead() tetap di posisi default) — ini keterbatasan simulator, bukan
+// bug wiring/kode (lihat wokwi/README.md). Suhu/kelembapan DHT22 TIDAK kena
+// batasan ini -- slider "Editing DHT22" dibaca langsung lewat dhtSensor.
+// Supaya tetap bisa demo data berubah-ubah secara live di Wokwi, ketik
+// perintah ini di kotak input Serial Monitor lalu Enter:
+//   D20      -> set tinggi air seolah distance 20cm dari sensor (water = 100-20 = 80cm)
+//   T28.5    -> set suhu 28.5 C
+//   H55      -> set kelembapan 55 %
+//   P6.8     -> set pH 6.8
+//   U15      -> set turbidity 15 NTU
+//   F3.2     -> set flow 3.2 L/menit
+//   R        -> reset semua override, kembali membaca sensor simulasi asli
+bool overrideActive = false;
+float overrideDistanceCm = NAN;
+float overrideTempC = NAN;
+float overrideHumidity = NAN;
+float overridePh = NAN;
+float overrideTurbidityNtu = NAN;
+float overrideFlowLpm = NAN;
+
+void handleSerialOverrideCommands() {
+  while (Serial.available()) {
+    String line = Serial.readStringUntil('\n');
+    line.trim();
+    if (line.length() == 0) continue;
+
+    char cmd = toupper(line.charAt(0));
+    if (cmd == 'R' && line.length() == 1) {
+      overrideActive = false;
+      overrideDistanceCm = overrideTempC = overrideHumidity = NAN;
+      overridePh = overrideTurbidityNtu = overrideFlowLpm = NAN;
+      Serial.println("[override] Direset — kembali pakai sensor simulasi asli.");
+      continue;
+    }
+
+    float value = line.substring(1).toFloat();
+    overrideActive = true;
+    switch (cmd) {
+      case 'D': overrideDistanceCm = value; Serial.print("[override] distance="); Serial.println(value); break;
+      case 'T': overrideTempC = value; Serial.print("[override] tempC="); Serial.println(value); break;
+      case 'H': overrideHumidity = value; Serial.print("[override] humidity="); Serial.println(value); break;
+      case 'P': overridePh = value; Serial.print("[override] ph="); Serial.println(value); break;
+      case 'U': overrideTurbidityNtu = value; Serial.print("[override] turbidityNtu="); Serial.println(value); break;
+      case 'F': overrideFlowLpm = value; Serial.print("[override] flowLpm="); Serial.println(value); break;
+      default: Serial.println("[override] Perintah tidak dikenal. Pakai D/T/H/P/U/F<angka> atau R."); break;
+    }
+  }
+}
 
 void IRAM_ATTR onFlowPulse() {
   flowPulseCount++;
@@ -172,9 +267,17 @@ void updateFlowCalculation() {
     flowPulseCount = 0;
     interrupts();
 
-    float litersThisWindow = pulses / FLOW_PULSES_PER_LITER;
-    flowVolumeLiters += litersThisWindow;
-    flowRateLpm = litersThisWindow * (60000.0 / elapsed);
+    if (!isnan(overrideFlowLpm)) {
+      // Override aktif (lihat handleSerialOverrideCommands): pakai rate yang
+      // diset manual, dan tetap akumulasi volume seolah air mengalir terus
+      // -- supaya demo di Wokwi tidak perlu klik pushbutton berkali-kali.
+      flowRateLpm = overrideFlowLpm;
+      flowVolumeLiters += flowRateLpm * (elapsed / 60000.0);
+    } else {
+      float litersThisWindow = pulses / FLOW_PULSES_PER_LITER;
+      flowVolumeLiters += litersThisWindow;
+      flowRateLpm = litersThisWindow * (60000.0 / elapsed);
+    }
 
     flowWindowStart = now;
   }
@@ -236,9 +339,9 @@ void renderLcdPage(float waterHeightCm, float ph, float turbidityNtu) {
       break;
     case 4:
       lcd.setCursor(0, 0);
-      lcd.print("WiFi:");
+      lcd.print("MQTT:");
       lcd.setCursor(0, 1);
-      lcd.print(WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString() : "disconnected");
+      lcd.print(mqttClient.connected() ? "connected" : "disconnected");
       break;
   }
 }
@@ -256,6 +359,26 @@ void ensureWifiConnected() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 }
 
+void ensureMqttConnected() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  if (mqttClient.connected()) return;
+
+  unsigned long now = millis();
+  if (now - lastMqttAttempt < MQTT_RECONNECT_INTERVAL_MS) return;
+  lastMqttAttempt = now;
+
+  String clientId = String("ecosense-wokwi-") + String((uint32_t)esp_random(), HEX);
+  Serial.print("MQTT: mencoba konek sebagai ");
+  Serial.println(clientId);
+
+  if (mqttClient.connect(clientId.c_str())) {
+    Serial.println("MQTT: terhubung ke broker");
+  } else {
+    Serial.print("MQTT: gagal konek, state=");
+    Serial.println(mqttClient.state());
+  }
+}
+
 void setNumberOrNull(JsonDocument &doc, const char* key, float value) {
   if (isnan(value)) {
     doc[key] = nullptr;
@@ -265,10 +388,11 @@ void setNumberOrNull(JsonDocument &doc, const char* key, float value) {
 }
 
 void sendReadingToServer(float distanceCm, float waterHeightCm, float ph, float turbidityNtu) {
-  if (WiFi.status() != WL_CONNECTED) return;
+  if (!mqttClient.connected()) return;
 
   JsonDocument doc;
   doc["deviceId"] = DEVICE_ID;
+  doc["apiKey"] = DEVICE_API_KEY;
   setNumberOrNull(doc, "distanceCm", distanceCm);
   setNumberOrNull(doc, "waterHeightCm", waterHeightCm);
   setNumberOrNull(doc, "ph", ph);
@@ -284,26 +408,14 @@ void sendReadingToServer(float distanceCm, float waterHeightCm, float ph, float 
   String payload;
   serializeJson(doc, payload);
 
-  HTTPClient http;
-  http.setTimeout(4000);
-  http.begin(INGEST_URL);
-  http.addHeader("Content-Type", "application/json");
-  http.addHeader("x-api-key", DEVICE_API_KEY);
-
-  Serial.print("HTTP POST -> ");
-  Serial.println(INGEST_URL);
+  Serial.print("MQTT PUBLISH -> ");
+  Serial.println(MQTT_TOPIC);
   Serial.print("Payload: ");
   Serial.println(payload);
 
-  int statusCode = http.POST(payload);
-  if (statusCode <= 0) {
-    Serial.print("Kirim ke server gagal, error: ");
-    Serial.println(http.errorToString(statusCode));
-  } else {
-    Serial.print("HTTP status: ");
-    Serial.println(statusCode);
-  }
-  http.end();
+  bool ok = mqttClient.publish(MQTT_TOPIC, payload.c_str());
+  Serial.print("MQTT publish result: ");
+  Serial.println(ok ? "OK" : "GAGAL");
 }
 
 void setup() {
@@ -322,7 +434,7 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(PIN_FLOW), onFlowPulse, FALLING);
   flowWindowStart = millis();
 
-  dht.begin();
+  dhtSensor.setup(PIN_DHT, DHTesp::DHT22);
 
   lcd.init();
   lcd.backlight();
@@ -335,13 +447,20 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-  Serial.println("EcoSense Station - Wokwi WiFi sim ready");
+  mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
+  mqttClient.setBufferSize(512);
+
+  Serial.println("EcoSense Station - Wokwi WiFi+MQTT sim ready");
 }
 
 void loop() {
   unsigned long now = millis();
 
+  handleSerialOverrideCommands();
+
   ensureWifiConnected();
+  ensureMqttConnected();
+  mqttClient.loop();
 
   float distanceCm = readUltrasonicDistanceCm();
   float waterHeightCm = computeWaterHeightCm(distanceCm);
@@ -352,16 +471,28 @@ void loop() {
 
   if (now - lastDhtRead >= DHT_INTERVAL_MS) {
     lastDhtRead = now;
-    float t = dht.readTemperature();
-    float h = dht.readHumidity();
+    TempAndHumidity dhtData = dhtSensor.getTempAndHumidity();
+    float t = dhtData.temperature;
+    float h = dhtData.humidity;
     if (!isnan(t) && !isnan(h)) {
       dhtTemperature = t;
       dhtHumidity = h;
-    } else {
-      dhtTemperature = NAN;
-      dhtHumidity = NAN;
     }
+    // Kalau pembacaan gagal (NaN), pertahankan nilai dhtTemperature/dhtHumidity
+    // yang terakhir berhasil dibaca -- supaya suhu/kelembapan murni
+    // dikendalikan oleh part DHT22 sendiri (slider "Editing DHT22" di Wokwi,
+    // atau sensor fisik asli di perangkat).
   }
+
+  // Override manual (lihat handleSerialOverrideCommands) menang atas
+  // pembacaan sensor simulasi asli — supaya demo di Wokwi tetap bisa
+  // menunjukkan data berubah-ubah walau attrs/slider part tidak ikut terbaca.
+  if (!isnan(overrideDistanceCm)) distanceCm = overrideDistanceCm;
+  waterHeightCm = computeWaterHeightCm(distanceCm);
+  if (!isnan(overridePh)) ph = overridePh;
+  if (!isnan(overrideTurbidityNtu)) turbidityNtu = overrideTurbidityNtu;
+  if (!isnan(overrideTempC)) dhtTemperature = overrideTempC;
+  if (!isnan(overrideHumidity)) dhtHumidity = overrideHumidity;
 
   updateAlarms(waterHeightCm);
 
@@ -376,12 +507,37 @@ void loop() {
     sendReadingToServer(distanceCm, waterHeightCm, ph, turbidityNtu);
   }
 
-  Serial.print("dist_cm=");
+  // Ringkasan status tiap loop, lengkap dengan keterangan Bahasa Indonesia
+  // supaya gampang dibaca di Serial Monitor (bukan cuma dist_cm/water_cm).
+  Serial.print("Jarak sensor: ");
   Serial.print(isnan(distanceCm) ? -1 : distanceCm);
-  Serial.print(" water_cm=");
+  Serial.print(" cm | Tinggi air: ");
   Serial.print(isnan(waterHeightCm) ? -1 : waterHeightCm);
-  Serial.print(" wifi=");
-  Serial.println(WiFi.status() == WL_CONNECTED ? "up" : "down");
+  Serial.print(" cm");
+  Serial.print(lowWaterAlarm ? " [ALARM: AIR RENDAH]" : "");
+
+  Serial.print(" | pH: ");
+  Serial.print(isnan(ph) ? -1 : ph);
+  Serial.print(" | Kekeruhan: ");
+  Serial.print(isnan(turbidityNtu) ? -1 : turbidityNtu);
+  Serial.print(" NTU");
+
+  Serial.print(" | Suhu: ");
+  Serial.print(isnan(dhtTemperature) ? -1 : dhtTemperature);
+  Serial.print(" C | Kelembapan: ");
+  Serial.print(isnan(dhtHumidity) ? -1 : dhtHumidity);
+  Serial.print(" %");
+
+  Serial.print(" | Debit air: ");
+  Serial.print(flowRateLpm);
+  Serial.print(" L/menit | Volume kumulatif: ");
+  Serial.print(flowVolumeLiters);
+  Serial.print(" L");
+
+  Serial.print(" | WiFi: ");
+  Serial.print(WiFi.status() == WL_CONNECTED ? "terhubung" : "terputus");
+  Serial.print(" | MQTT: ");
+  Serial.println(mqttClient.connected() ? "terhubung" : "terputus");
 
   delay(500);
 }

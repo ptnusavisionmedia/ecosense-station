@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Backend EcoSense Station dipakai lewat HTTP biasa (bukan HTTPS) saat
+         dev/testing lewat USB + "adb reverse tcp:3000 tcp:3000".
+         Cleartext hanya diizinkan untuk host ini, bukan domain lain.
+         Kalau nanti pindah ke WiFi/LAN (ganti Base URL di Settings ke IP PC),
+         tambahkan alamat IP tersebut di sini juga. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

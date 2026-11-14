@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ecosense-backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "backend", "run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "icon-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:/Users/User/AppData/Local/Temp/claude/5a09d6c500b413e7/7d416e32-6899-4ccf-aa90-274d8bc6f73f/scratchpad/icon/serve.js"],
+      "port": 5055
+    }
+  ]
+}
