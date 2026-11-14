@@ -118,12 +118,26 @@ function helpMessage() {
   ].join("\n");
 }
 
-export function initTelegramBot({ token, getLatestReadingFn, isDeviceOnlineFn }) {
+export function initTelegramBot({ token, getLatestReadingFn, isDeviceOnlineFn, allowedChatIds }) {
   if (!token) {
     console.warn(
       "[telegram] TELEGRAM_BOT_TOKEN kosong — bot Telegram tidak diaktifkan."
     );
     return null;
+  }
+
+  // Allowlist opsional (TELEGRAM_ALLOWED_CHAT_IDS di .env): kalau diisi,
+  // hanya chat ID tsb yang boleh pakai bot — tanpa ini, siapa saja yang
+  // menemukan bot (lewat username publiknya) bisa lihat data sensor &
+  // ikut berlangganan notifikasi alarm tanpa login sama sekali. Kalau
+  // tidak diisi, perilaku lama (terbuka untuk siapa saja) dipertahankan
+  // supaya tidak mendadak memutus pemakaian yang sudah berjalan.
+  const allowSet = new Set((allowedChatIds || []).map(String));
+  const isAllowed = (chatId) => allowSet.size === 0 || allowSet.has(String(chatId));
+  if (allowSet.size === 0) {
+    console.warn(
+      "[telegram] TELEGRAM_ALLOWED_CHAT_IDS belum diisi — bot bisa diakses siapa saja yang menemukannya."
+    );
   }
 
   bot = new TelegramBot(token, { polling: true });
@@ -162,6 +176,10 @@ export function initTelegramBot({ token, getLatestReadingFn, isDeviceOnlineFn })
   }
 
   bot.onText(/^\/start/, (msg) => {
+    if (!isAllowed(msg.chat.id)) {
+      bot.sendMessage(msg.chat.id, "Bot ini bersifat privat, chat ID kamu tidak terdaftar.");
+      return;
+    }
     addSubscriber(msg.chat.id);
     bot.sendMessage(
       msg.chat.id,
@@ -176,6 +194,7 @@ export function initTelegramBot({ token, getLatestReadingFn, isDeviceOnlineFn })
   });
 
   bot.onText(/^\/(stop|bantuan|help|histori|history|status)/, (msg, match) => {
+    if (!isAllowed(msg.chat.id)) return;
     const cmd = match[1];
     if (cmd === "stop") {
       removeSubscriber(msg.chat.id);
@@ -203,6 +222,7 @@ export function initTelegramBot({ token, getLatestReadingFn, isDeviceOnlineFn })
   // Tombol reply keyboard (teks biasa, bukan "/command") supaya pengguna
   // awam cukup tap tombol di bawah chat tanpa mengetik.
   bot.on("message", (msg) => {
+    if (!isAllowed(msg.chat.id)) return;
     const text = (msg.text || "").trim();
     if (text === "📊 Status") sendStatus(msg.chat.id);
     else if (text === "📈 Histori 24 Jam") sendHistory(msg.chat.id);
@@ -221,6 +241,10 @@ export function initTelegramBot({ token, getLatestReadingFn, isDeviceOnlineFn })
   // Tombol inline (di bawah pesan /status dan /histori).
   bot.on("callback_query", (query) => {
     const chatId = query.message.chat.id;
+    if (!isAllowed(chatId)) {
+      bot.answerCallbackQuery(query.id).catch(() => {});
+      return;
+    }
     if (query.data === "status") sendStatus(chatId);
     else if (query.data === "history") sendHistory(chatId);
     bot.answerCallbackQuery(query.id).catch(() => {});

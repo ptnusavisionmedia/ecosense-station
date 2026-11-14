@@ -27,6 +27,10 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 const OFFLINE_MINUTES = Number(process.env.DEVICE_OFFLINE_MINUTES) || 5;
 const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL || "";
 const MQTT_TOPIC = process.env.MQTT_TOPIC || "";
+const TELEGRAM_ALLOWED_CHAT_IDS = (process.env.TELEGRAM_ALLOWED_CHAT_IDS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 if (!DEVICE_API_KEY) {
   console.warn(
@@ -49,6 +53,10 @@ if (countUsers() === 0) {
 const isOnline = makeOnlineChecker(OFFLINE_MINUTES);
 
 const app = express();
+// Di belakang reverse proxy (Tailscale Funnel dll) koneksi masuk ke proses
+// Node selalu plain HTTP; tanpa ini, req.secure selalu false dan cookie
+// sesi tidak pernah dapat flag Secure walau publiknya sudah HTTPS.
+app.set("trust proxy", 1);
 app.use(cors());
 app.use(express.json({ limit: "32kb" }));
 
@@ -74,6 +82,7 @@ initTelegramBot({
   token: TELEGRAM_BOT_TOKEN,
   getLatestReadingFn: () => getLatestReading(DEFAULT_DEVICE_ID),
   isDeviceOnlineFn: isOnline,
+  allowedChatIds: TELEGRAM_ALLOWED_CHAT_IDS,
 });
 
 initMqttIngest({

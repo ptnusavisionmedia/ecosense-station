@@ -44,6 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       widget.onLoggedIn(user);
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e is ApiException ? e.message : 'Tidak bisa terhubung ke server.');
     } finally {
       if (mounted) setState(() => _loading = false);

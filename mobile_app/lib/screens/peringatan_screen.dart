@@ -81,6 +81,7 @@ class _PeringatanScreenState extends State<PeringatanScreen> {
       if (!mounted) return;
       setState(() => _success = 'Ambang batas berhasil disimpan.');
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e is ApiException ? e.message : 'Gagal menyimpan ambang batas.');
     } finally {
       if (mounted) setState(() => _saving = false);

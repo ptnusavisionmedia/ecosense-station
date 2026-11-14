@@ -60,10 +60,25 @@ function fmt(value, digits = 1) {
   return Number(value).toFixed(digits);
 }
 
+// Field seperti deviceId (dikirim perangkat) dan username (dibuat admin)
+// dirender lewat innerHTML di beberapa tabel — tanpa escape ini, nilai
+// yang mengandung markup (mis. "<img onerror=...>") akan dieksekusi di
+// DOM dashboard siapa pun yang membukanya.
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]
+  ));
+}
+
+let redirectingToLogin = false;
+
 async function fetchJson(path, options = {}) {
   const res = await fetch(path, { credentials: "same-origin", ...options });
   if (res.status === 401) {
-    window.location.replace("login.html");
+    if (!redirectingToLogin) {
+      redirectingToLogin = true;
+      window.location.replace("login.html");
+    }
     throw new Error("Belum login.");
   }
   if (!res.ok) {
@@ -216,7 +231,7 @@ function renderRawTable(reading) {
     .map((f) => {
       let v = reading[f];
       if (f === "ts" && v) v = new Date(v).toLocaleString("id-ID");
-      return `<tr><td>${f}</td><td>${v ?? "—"}</td></tr>`;
+      return `<tr><td>${escapeHtml(f)}</td><td>${v === null || v === undefined ? "—" : escapeHtml(v)}</td></tr>`;
     })
     .join("");
 }
@@ -247,7 +262,15 @@ function renderAlarmBanner(alarms) {
   els.alarmBanner.classList.remove("hidden");
 }
 
+let pollInFlight = false;
+
 async function pollLatestAndStatus() {
+  // Tanpa guard ini, kalau satu request lebih lambat dari interval poll
+  // (mis. interval 5s disetel tapi backend lagi lambat >5s), request
+  // berikutnya bisa mulai sebelum yang lama selesai dan hasilnya bisa
+  // resolve tidak berurutan — UI sempat kembali ke angka lama.
+  if (pollInFlight) return;
+  pollInFlight = true;
   try {
     const [latest, status] = await Promise.all([fetchJson("/api/latest"), fetchJson("/api/status")]);
     els.connError.classList.add("hidden");
@@ -259,11 +282,14 @@ async function pollLatestAndStatus() {
     renderSimulation(latest.reading, status.alarms, status);
     document.getElementById("infoDeviceId").textContent = status.deviceId || "—";
   } catch (err) {
-    if (err.message === "Belum login.") return;
-    console.error(err);
-    els.connError.classList.remove("hidden");
-    els.statusText.textContent = "Tidak terhubung";
-    els.statusDot.className = "dot offline";
+    if (err.message !== "Belum login.") {
+      console.error(err);
+      els.connError.classList.remove("hidden");
+      els.statusText.textContent = "Tidak terhubung";
+      els.statusDot.className = "dot offline";
+    }
+  } finally {
+    pollInFlight = false;
   }
 }
 
@@ -635,8 +661,8 @@ async function loadUsers() {
       .map(
         (u) => `
         <tr data-id="${u.id}">
-          <td>${u.username}</td>
-          <td><span class="badge ${u.role === "admin" ? "badge-admin" : "badge-viewer"}">${u.role}</span></td>
+          <td>${escapeHtml(u.username)}</td>
+          <td><span class="badge ${u.role === "admin" ? "badge-admin" : "badge-viewer"}">${escapeHtml(u.role)}</span></td>
           <td>${new Date(u.createdAt).toLocaleDateString("id-ID")}</td>
           <td class="row-actions">
             <button class="icon-btn" data-action="toggle-role" title="Ganti role">${icon("edit", { size: 16 })}</button>

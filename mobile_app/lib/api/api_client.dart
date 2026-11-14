@@ -14,9 +14,12 @@ import 'package:path_provider/path_provider.dart';
 /// README mobile_app). Untuk pemakaian lewat WiFi, ganti ke IP LAN PC,
 /// misalnya `http://192.168.100.216:3000`.
 class ApiClient {
-  ApiClient._(this.dio);
+  ApiClient._(this.dio, this.cookieJar);
 
   final Dio dio;
+  // Disimpan supaya logout bisa benar-benar menghapus cookie sesi dari
+  // disk, bukan cuma mengandalkan POST /api/auth/logout berhasil.
+  final CookieJar cookieJar;
   static ApiClient? _instance;
 
   static Future<ApiClient> instance({String? baseUrl}) async {
@@ -31,7 +34,7 @@ class ApiClient {
       validateStatus: (code) => code != null && code < 500,
     ));
     dio.interceptors.add(CookieManager(cookieJar));
-    _instance = ApiClient._(dio);
+    _instance = ApiClient._(dio, cookieJar);
     return _instance!;
   }
 

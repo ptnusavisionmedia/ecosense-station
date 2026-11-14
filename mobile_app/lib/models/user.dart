@@ -8,8 +8,8 @@ class AppUser {
   bool get isAdmin => role == 'admin';
 
   factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
-        id: json['id'] as int,
-        username: json['username'] as String,
-        role: json['role'] as String,
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        username: json['username'] as String? ?? '',
+        role: json['role'] as String? ?? 'viewer',
       );
 }

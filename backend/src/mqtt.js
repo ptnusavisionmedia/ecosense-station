@@ -42,8 +42,8 @@ export function initMqttIngest({ brokerUrl, topic, deviceApiKey }) {
       return;
     }
 
-    if (deviceApiKey && body.apiKey !== deviceApiKey) {
-      console.warn("[mqtt] Pesan ditolak: apiKey tidak cocok.");
+    if (!deviceApiKey || body.apiKey !== deviceApiKey) {
+      console.warn("[mqtt] Pesan ditolak: apiKey tidak cocok atau DEVICE_API_KEY belum diisi.");
       return;
     }
 

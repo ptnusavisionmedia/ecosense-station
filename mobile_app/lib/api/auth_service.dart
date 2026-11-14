@@ -24,6 +24,11 @@ class AuthService {
       return AppUser.fromJson(res.data as Map<String, dynamic>);
     } on DioException {
       return null;
+    } catch (_) {
+      // Respons tidak sesuai bentuk yang diharapkan (mis. body berubah) —
+      // jangan sampai lempar error mentah yang tidak ditangani pemanggil,
+      // cukup anggap sesi tidak valid.
+      return null;
     }
   }
 
@@ -31,8 +36,11 @@ class AuthService {
     try {
       await _client.dio.post('/api/auth/logout');
     } on DioException {
-      // Diabaikan — tetap anggap logout di sisi klien walau request gagal.
+      // Diabaikan — tetap lanjut hapus cookie di sisi klien walau request
+      // ke server gagal (mis. offline), supaya sesi lama tidak tertinggal
+      // tersimpan di disk device ini.
     }
+    await _client.cookieJar.deleteAll();
   }
 
   Future<void> changePassword(String newPassword) async {

@@ -10,12 +10,15 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-const _kPollSecondsKey = 'poll_seconds';
+// Exported (bukan diawali `_`) supaya HomeScreen bisa baca preferensi yang
+// sama — sebelumnya Settings menulis nilai ini tapi tidak ada yang pernah
+// membacanya balik, jadi mengubah interval di sini tidak berefek apa pun.
+const kPollSecondsKey = 'poll_seconds';
 const _kBaseUrlKey = 'base_url';
-const _defaultPollSeconds = 10;
+const kDefaultPollSeconds = 10;
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  int _pollSeconds = _defaultPollSeconds;
+  int _pollSeconds = kDefaultPollSeconds;
   final _baseUrlCtrl = TextEditingController();
   bool _loading = true;
   String? _savedMessage;
@@ -36,7 +39,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _pollSeconds = prefs.getInt(_kPollSecondsKey) ?? _defaultPollSeconds;
+      _pollSeconds = prefs.getInt(kPollSecondsKey) ?? kDefaultPollSeconds;
       _baseUrlCtrl.text = prefs.getString(_kBaseUrlKey) ?? ApiClient.defaultBaseUrl;
       _loading = false;
     });
@@ -44,7 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _savePoll(int seconds) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kPollSecondsKey, seconds);
+    await prefs.setInt(kPollSecondsKey, seconds);
     if (!mounted) return;
     setState(() {
       _pollSeconds = seconds;

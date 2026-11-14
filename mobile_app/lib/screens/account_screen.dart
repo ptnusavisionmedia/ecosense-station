@@ -40,6 +40,7 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Future<void> _loadUsers() async {
+    if (!mounted) return;
     setState(() {
       _loadingUsers = true;
       _usersError = null;
@@ -75,6 +76,7 @@ class _AccountScreenState extends State<AccountScreen> {
       _newPwCtrl.clear();
       setState(() => _pwSuccess = 'Password berhasil diganti.');
     } catch (e) {
+      if (!mounted) return;
       setState(() => _pwError = e is ApiException ? e.message : 'Gagal mengganti password.');
     } finally {
       if (mounted) setState(() => _savingPw = false);

@@ -239,3 +239,11 @@ export function getSessionUser(token) {
 export function deleteSession(token) {
   db.prepare(`DELETE FROM sessions WHERE token = ?`).run(token);
 }
+
+export function deleteSessionsForUser(userId, exceptToken = null) {
+  if (exceptToken) {
+    db.prepare(`DELETE FROM sessions WHERE userId = ? AND token != ?`).run(userId, exceptToken);
+  } else {
+    db.prepare(`DELETE FROM sessions WHERE userId = ?`).run(userId);
+  }
+}

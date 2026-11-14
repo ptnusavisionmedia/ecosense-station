@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../api/api_client.dart';
 import '../api/sensor_service.dart';
 import '../theme.dart';
 import '../widgets/metric_card.dart';
+import 'settings_screen.dart' show kPollSecondsKey, kDefaultPollSeconds;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,7 +25,18 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _load();
-    _timer = Timer.periodic(const Duration(seconds: 10), (_) => _load(silent: true));
+    _initTimer();
+  }
+
+  Future<void> _initTimer() async {
+    // Sebelumnya interval ini hardcode 10 detik dan tidak pernah membaca
+    // preferensi yang disimpan dari Settings — jadi mengubah "Interval
+    // Pembaruan Data" di sana tidak berefek apa pun ke Home.
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    final seconds = prefs.getInt(kPollSecondsKey) ?? kDefaultPollSeconds;
+    _timer?.cancel();
+    _timer = Timer.periodic(Duration(seconds: seconds), (_) => _load(silent: true));
   }
 
   @override
