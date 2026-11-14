@@ -588,7 +588,6 @@ select:disabled {
 .content {
   flex: 1;
   padding: var(--space-6);
-  max-width: 1200px;
   width: 100%;
 }
 
@@ -605,7 +604,6 @@ select:disabled {
 .view-subtitle {
   color: var(--text-secondary);
   font-size: 14px;
-  margin-top: calc(-1 * var(--space-2));
 }
 
 /* ===================== Banners ===================== */
@@ -979,5 +977,180 @@ select:disabled {
   .form-grid--inline {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+
+/* ===================== Simulasi (live tank visualization) ===================== */
+
+.panel-sim {
+  align-items: center;
+}
+
+.sim-stage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  width: 100%;
+  justify-content: center;
+  transition: opacity 400ms ease, filter 400ms ease;
+}
+
+.sim-stage.offline {
+  opacity: 0.55;
+  filter: grayscale(0.6);
+}
+
+.sim-tank-svg {
+  width: 220px;
+  height: 260px;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.sim-tank-body {
+  fill: var(--color-bg);
+  stroke: var(--color-border);
+  stroke-width: 2;
+  transition: stroke 300ms ease;
+}
+
+.sim-tank-body.alarm-low {
+  stroke: var(--error-solid);
+}
+
+.sim-tank-fill {
+  fill: var(--brand-700);
+  transition: y 600ms ease, height 600ms ease;
+}
+
+.sim-tank-ripple {
+  fill: var(--brand-300);
+  opacity: 0.6;
+}
+
+.sim-pipe-in,
+.sim-pipe-out {
+  fill: none;
+  stroke: var(--n-500);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.sim-flow-dash {
+  fill: none;
+  stroke: var(--chart-2);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 6 6;
+  animation: sim-flow-move 1.2s linear infinite;
+  animation-play-state: paused;
+}
+
+@keyframes sim-flow-move {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.sim-ultrasonic {
+  fill: var(--n-700);
+  stroke: none;
+}
+
+.sim-ultrasonic-wave {
+  fill: none;
+  stroke: var(--n-500);
+  stroke-width: 1.5;
+  opacity: 0.7;
+}
+
+.sim-probe {
+  fill: var(--n-600);
+  stroke: var(--n-600);
+  stroke-width: 2;
+  transition: stroke 300ms ease, fill 300ms ease;
+}
+
+.sim-probe.alarm {
+  stroke: var(--error-solid);
+  fill: var(--error-solid);
+}
+
+.sim-dht rect {
+  fill: var(--chart-4);
+  rx: 3;
+}
+
+.sim-panel-box {
+  fill: var(--n-800);
+}
+
+.sim-led {
+  fill: var(--n-600);
+  transition: fill 300ms ease;
+}
+
+.sim-led.offline {
+  fill: var(--n-500);
+}
+
+.sim-led.alarm {
+  fill: var(--error-solid);
+  animation: sim-led-pulse 900ms ease-in-out infinite;
+}
+
+@keyframes sim-led-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.sim-buzzer {
+  fill: none;
+  stroke: var(--n-500);
+  stroke-width: 1.5;
+}
+
+.sim-panel.alarm .sim-buzzer {
+  stroke: var(--error-solid);
+}
+
+.sim-readouts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(110px, 1fr));
+  gap: var(--space-3) var(--space-5);
+}
+
+.sim-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sim-readout-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.sim-readout-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.sim-note {
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: var(--space-4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-flow-dash,
+  .sim-led.alarm {
+    animation: none !important;
   }
 }

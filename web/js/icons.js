@@ -34,6 +34,7 @@ const ICON_PATHS = {
   wifiOff:
     '<path d="M3 3l18 18"/><path d="M4 9a12 12 0 0 1 12.7-2.6M20 9a12 12 0 0 0-2-1.6"/><path d="M7 12.5a8 8 0 0 1 6.4-1.7M17 12.5a8.1 8.1 0 0 0-1.3-1"/><path d="M10 16a4 4 0 0 1 2.7-1"/><circle cx="12" cy="19.5" r="0.9" fill="currentColor" stroke="none"/>',
   alert: '<path d="M12 9v4.5"/><circle cx="12" cy="16.5" r="0.4" fill="currentColor" stroke="none"/><path d="M10.9 3.6 2.7 18a1.5 1.5 0 0 0 1.3 2.2h16a1.5 1.5 0 0 0 1.3-2.2L13.1 3.6a1.3 1.3 0 0 0-2.2 0Z"/>',
+  waves: '<path d="M2 16c2 0 2.5-2 4.5-2s2.5 2 4.5 2 2.5-2 4.5-2 2.5 2 4.5 2 2.5-2 2-2"/><path d="M2 11c2 0 2.5-2 4.5-2s2.5 2 4.5 2 2.5-2 4.5-2 2.5 2 4.5 2 2.5-2 2-2"/>',
 };
 
 export function icon(name, { size = 20, className = "" } = {}) {

@@ -48,6 +48,7 @@ const els = {
 const VIEW_TITLES = {
   home: "Home",
   monitoring: "Monitoring",
+  simulasi: "Simulasi",
   data: "Data",
   peringatan: "Peringatan",
   account: "Account",
@@ -255,6 +256,7 @@ async function pollLatestAndStatus() {
     renderRawTable(latest.reading);
     renderStatus(status);
     renderAlarmBanner(status.alarms);
+    renderSimulation(latest.reading, status.alarms, status);
     document.getElementById("infoDeviceId").textContent = status.deviceId || "—";
   } catch (err) {
     if (err.message === "Belum login.") return;
@@ -263,6 +265,54 @@ async function pollLatestAndStatus() {
     els.statusText.textContent = "Tidak terhubung";
     els.statusDot.className = "dot offline";
   }
+}
+
+// ===================== Simulasi (live visual tank) =====================
+
+function renderSimulation(reading, alarms, status) {
+  const stage = document.getElementById("simStage");
+  const note = document.getElementById("simNote");
+  const online = Boolean(status && status.online);
+  stage.classList.toggle("offline", !online);
+
+  const waterCm = reading ? Number(reading.waterHeightCm) : NaN;
+  const hasWater = !Number.isNaN(waterCm);
+  const pct = hasWater ? Math.max(2, Math.min(100, (waterCm / WATER_TANK_MAX_CM) * 100)) : 0;
+  const tankTop = 20;
+  const tankHeight = 200;
+  const fillHeight = (tankHeight * pct) / 100;
+  const fillEl = document.getElementById("simTankFill");
+  fillEl.setAttribute("y", tankTop + tankHeight - fillHeight);
+  fillEl.setAttribute("height", fillHeight);
+
+  const flowLpm = reading ? Number(reading.flowLpm) : 0;
+  const flowing = Number.isFinite(flowLpm) && flowLpm > 0.05;
+  const dashEl = document.getElementById("simFlowDash");
+  dashEl.style.animationPlayState = flowing && online ? "running" : "paused";
+  dashEl.style.animationDuration = `${Math.max(0.35, Math.min(3, 6 / Math.max(flowLpm, 0.5)))}s`;
+
+  const anyAlarm = Boolean(alarms && (alarms.lowWaterAlarm || alarms.phAlarm || alarms.turbAlarm));
+  document.getElementById("simLed").classList.toggle("alarm", anyAlarm);
+  document.getElementById("simLed").classList.toggle("offline", !online);
+  document.getElementById("simAlarmGroup").classList.toggle("alarm", anyAlarm);
+  document.querySelector(".sim-tank-body").classList.toggle("alarm-low", Boolean(alarms && alarms.lowWaterAlarm));
+  document.querySelector(".sim-probe-ph").classList.toggle("alarm", Boolean(alarms && alarms.phAlarm));
+  document.querySelector(".sim-probe-turb").classList.toggle("alarm", Boolean(alarms && alarms.turbAlarm));
+
+  document.getElementById("simWaterVal").textContent = hasWater ? `${fmt(waterCm, 1)} cm` : "—";
+  document.getElementById("simPhVal").textContent = reading && reading.ph != null ? fmt(reading.ph, 2) : "—";
+  document.getElementById("simTurbVal").textContent =
+    reading && reading.turbidityNtu != null ? `${fmt(reading.turbidityNtu, 1)} NTU` : "—";
+  document.getElementById("simFlowVal").textContent =
+    reading && reading.flowLpm != null ? `${fmt(reading.flowLpm, 1)} L/menit` : "—";
+  document.getElementById("simTempVal").textContent = reading && reading.tempC != null ? `${fmt(reading.tempC, 1)}°C` : "—";
+  document.getElementById("simRhVal").textContent = reading && reading.rh != null ? `${fmt(reading.rh, 1)}%` : "—";
+
+  note.textContent = !online
+    ? "Perangkat offline — menampilkan data terakhir yang tercatat."
+    : anyAlarm
+      ? "Ada ambang batas yang terlampaui — lihat indikator yang menyala."
+      : "Perangkat online, simulasi mengikuti data sensor secara langsung.";
 }
 
 // ===================== Charts (overview + data) =====================
